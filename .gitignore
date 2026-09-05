@@ -1,0 +1,72 @@
+# See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+
+# compiled output
+dist
+tmp
+out-tsc
+*.tsbuildinfo
+.expo
+.expo-shared
+
+# dependencies
+node_modules
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# misc
+/.sass-cache
+/connect.lock
+/coverage
+/libpeerconnection.log
+npm-debug.log
+yarn-error.log
+testem.log
+/typings
+
+# System Files
+.DS_Store
+Thumbs.db
+
+.cursor/rules/nx-rules.mdc
+.github/instructions/nx.instructions.md
+
+# Local caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.agents/
+attached_assets/
+.publish/
+.cache/
+.local/
+
+# User data. These directories hold uploaded manuscripts and rendered exports —
+# unpublished academic work belonging to real people. Only artifacts/api-server
+# had a local ignore rule, so anything written to another storage root (e.g.
+# artifacts/storage/, or a STORAGE_DIR override inside the repo) was one
+# `git add -A` away from being committed. Match every storage root instead.
+**/storage/uploads/*
+**/storage/exports/*
+!**/storage/uploads/.gitkeep
+!**/storage/exports/.gitkeep
+
+# Secrets
+.env
+.env.*
+!.env.example

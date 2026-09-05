@@ -1,0 +1,23 @@
+[project]
+name = "doc-format-assist"
+version = "0.1.0"
+description = "Academic paper formatting assistant"
+requires-python = ">=3.11"
+dependencies = [
+    "docling>=2.113.0",
+    "latex2mathml>=3.77.0",
+    "pydantic>=2.13.4",
+    "python-docx>=1.2.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["artifacts/api-server/python/tests"]
+# The engine scripts import each other by bare module name (`from styles
+# import ...`), matching how pythonClient.py spawns them with cwd set to the
+# python/ directory.
+pythonpath = ["artifacts/api-server/python"]

@@ -1,0 +1,39 @@
+{
+  "name": "doc-format-assist",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "artifacts/api-server",
+    "artifacts/mockup-sandbox",
+    "artifacts/paper-formatter",
+    "lib/api-client-react",
+    "lib/api-spec",
+    "lib/api-zod",
+    "lib/db",
+    "scripts"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w @workspace/api-server",
+    "dev:web": "npm run dev -w @workspace/paper-formatter",
+    "build": "npm run typecheck && npm run build --workspaces --if-present",
+    "typecheck:libs": "tsc --build",
+    "typecheck": "npm run typecheck:libs && npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:python": "python -m pytest artifacts/api-server/python/tests -q",
+    "migrate": "npm run migrate -w @workspace/db",
+    "test:smoke": "node scripts/smoke.mjs"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.5",
+    "typescript": "~5.9.3"
+  },
+  "overrides": {
+    "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0",
+    "esbuild": "0.28.2"
+  },
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=10"
+  }
+}

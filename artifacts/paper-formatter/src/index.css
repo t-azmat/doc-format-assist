@@ -1,0 +1,733 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================================
+   READING ROOM
+   ----------------------------------------------------------------------------
+   The workspace is a desk; the manuscript is paper. White is reserved for the
+   page and nothing else, so the thing the user is actually trying to look at is
+   the brightest surface on screen.
+
+   Typography rule: the serif belongs to the manuscript. The chrome is sans and
+   mono only, which is why the preview reads as book typesetting rather than as
+   more interface.
+   ========================================================================== */
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card-border: hsl(var(--card-border));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover-border: hsl(var(--popover-border));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-border: var(--primary-border);
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary-border: var(--secondary-border);
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted-border: var(--muted-border);
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent-border: var(--accent-border);
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive-border: var(--destructive-border);
+
+  /* Reading Room additions. `paper` is the manuscript surface and is white in
+     both themes — a page is a page. `brand` is the binding-cloth oxblood, used
+     for focus and the mark only, so it never competes with `destructive`. */
+  --color-paper: hsl(var(--paper));
+  --color-paper-foreground: hsl(var(--paper-foreground));
+  --color-brand: hsl(var(--brand));
+  --color-brand-foreground: hsl(var(--brand-foreground));
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-info: hsl(var(--info));
+  --color-info-foreground: hsl(var(--info-foreground));
+
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-primary-border: var(--sidebar-primary-border);
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-accent-border: var(--sidebar-accent-border);
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-mono: var(--app-font-mono);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+}
+
+/* --------------------------------------------------------------------------
+   LIGHT — board grey desk, paper white page
+   -------------------------------------------------------------------------- */
+:root {
+  --button-outline: rgba(0, 0, 0, 0.1);
+  --badge-outline: rgba(0, 0, 0, 0.05);
+
+  --opaque-button-border-intensity: -8;
+
+  --elevate-1: rgba(0, 0, 0, 0.035);
+  --elevate-2: rgba(0, 0, 0, 0.075);
+
+  /* Bookbinder's board: warm but desaturated, and a full 10% darker than the
+     panels sitting on it. The old theme put a 98% background behind 100% cards,
+     which is why nothing read as paper. */
+  --background: 40 14% 88%;
+  --foreground: 160 6% 10%;
+
+  --border: 40 12% 80%;
+  --input: 40 12% 80%;
+  --ring: 1 44% 33%;
+
+  --card: 42 20% 95%;
+  --card-foreground: 160 6% 10%;
+  --card-border: 40 12% 82%;
+
+  --sidebar: 42 18% 92%;
+  --sidebar-foreground: 160 6% 10%;
+  --sidebar-border: 40 12% 82%;
+  --sidebar-primary: 160 6% 10%;
+  --sidebar-primary-foreground: 42 20% 96%;
+  --sidebar-accent: 40 16% 87%;
+  --sidebar-accent-foreground: 160 6% 10%;
+  --sidebar-ring: 1 44% 33%;
+
+  --popover: 42 20% 96%;
+  --popover-foreground: 160 6% 10%;
+  --popover-border: 40 12% 82%;
+
+  /* Primary is ink, not blue. Every tool in this category defaults to blue. */
+  --primary: 160 6% 10%;
+  --primary-foreground: 42 20% 96%;
+
+  --secondary: 40 16% 91%;
+  --secondary-foreground: 160 6% 10%;
+
+  --muted: 40 14% 91%;
+  --muted-foreground: 150 3% 38%;
+
+  --accent: 40 18% 86%;
+  --accent-foreground: 160 6% 10%;
+
+  --destructive: 3 71% 41%;
+  --destructive-foreground: 42 20% 96%;
+
+  --paper: 0 0% 100%;
+  --paper-foreground: 0 0% 7%;
+
+  --brand: 1 44% 33%;
+  --brand-foreground: 42 20% 96%;
+
+  --warning: 41 100% 30%;
+  --warning-foreground: 42 20% 96%;
+
+  --success: 135 26% 33%;
+  --success-foreground: 42 20% 96%;
+
+  --info: 210 24% 38%;
+  --info-foreground: 42 20% 96%;
+
+  --chart-1: 1 44% 33%;
+  --chart-2: 41 100% 30%;
+  --chart-3: 135 26% 33%;
+  --chart-4: 210 24% 38%;
+  --chart-5: 150 3% 38%;
+
+  /* IBM Plex: drawn for technical documentation, and the sans/mono pair is one
+     family, so the chrome holds together without a display face. No serif is
+     loaded at all — the page uses whatever the StyleSpec asks for. */
+  --app-font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --app-font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --app-font-serif: 'Times New Roman', Georgia, serif;
+
+  --radius: 0.25rem;
+
+  /* Paper casts a real shadow; chrome does not. Keeping elevation off the
+     interface is what lets the page float. */
+  --shadow-2xs: 0 1px 1px rgba(24, 22, 18, 0.04);
+  --shadow-xs: 0 1px 2px rgba(24, 22, 18, 0.05);
+  --shadow-sm: 0 1px 2px rgba(24, 22, 18, 0.06);
+  --shadow: 0 1px 3px rgba(24, 22, 18, 0.08);
+  --shadow-md: 0 2px 6px rgba(24, 22, 18, 0.09);
+  --shadow-lg: 0 6px 18px rgba(24, 22, 18, 0.11);
+  --shadow-xl: 0 12px 32px rgba(24, 22, 18, 0.13);
+  --shadow-2xl: 0 20px 48px rgba(24, 22, 18, 0.16);
+
+  --shadow-sheet: 0 1px 2px rgba(24, 22, 18, 0.10), 0 8px 24px rgba(24, 22, 18, 0.10);
+
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+}
+
+/* --------------------------------------------------------------------------
+   DARK — the desk goes to ink; the page stays paper
+   -------------------------------------------------------------------------- */
+.dark {
+  --button-outline: rgba(255, 255, 255, 0.1);
+  --badge-outline: rgba(255, 255, 255, 0.05);
+
+  --opaque-button-border-intensity: 9;
+
+  --elevate-1: rgba(255, 255, 255, 0.045);
+  --elevate-2: rgba(255, 255, 255, 0.09);
+
+  --background: 160 6% 10%;
+  --foreground: 42 18% 93%;
+
+  --border: 160 5% 22%;
+  --input: 160 5% 22%;
+  --ring: 1 40% 66%;
+
+  --card: 160 5% 14%;
+  --card-foreground: 42 18% 93%;
+  --card-border: 160 5% 22%;
+
+  --sidebar: 160 5% 13%;
+  --sidebar-foreground: 42 18% 93%;
+  --sidebar-border: 160 5% 22%;
+  --sidebar-primary: 42 18% 93%;
+  --sidebar-primary-foreground: 160 6% 10%;
+  --sidebar-accent: 160 5% 20%;
+  --sidebar-accent-foreground: 42 18% 93%;
+  --sidebar-ring: 1 40% 66%;
+
+  --popover: 160 5% 15%;
+  --popover-foreground: 42 18% 93%;
+  --popover-border: 160 5% 22%;
+
+  --primary: 42 18% 93%;
+  --primary-foreground: 160 6% 10%;
+
+  --secondary: 160 5% 20%;
+  --secondary-foreground: 42 18% 93%;
+
+  --muted: 160 5% 18%;
+  --muted-foreground: 150 4% 64%;
+
+  --accent: 160 5% 22%;
+  --accent-foreground: 42 18% 93%;
+
+  --destructive: 3 62% 58%;
+  --destructive-foreground: 160 6% 10%;
+
+  /* A page is a page. */
+  --paper: 0 0% 100%;
+  --paper-foreground: 0 0% 7%;
+
+  --brand: 1 40% 66%;
+  --brand-foreground: 160 6% 10%;
+
+  --warning: 41 68% 56%;
+  --warning-foreground: 160 6% 10%;
+
+  --success: 135 30% 58%;
+  --success-foreground: 160 6% 10%;
+
+  --info: 210 32% 66%;
+  --info-foreground: 160 6% 10%;
+
+  --chart-1: 1 40% 66%;
+  --chart-2: 41 68% 56%;
+  --chart-3: 135 30% 58%;
+  --chart-4: 210 32% 66%;
+  --chart-5: 150 4% 64%;
+
+  --shadow-2xs: 0 1px 1px rgba(0, 0, 0, 0.4);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 6px 18px rgba(0, 0, 0, 0.55);
+  --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.6);
+  --shadow-2xl: 0 20px 48px rgba(0, 0, 0, 0.65);
+
+  --shadow-sheet: 0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    /* The theme class is written to <html>, so paint the root too or an
+       overscroll bounce flashes the opposite theme. */
+    background-color: hsl(var(--background));
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-size: 0.875rem;
+    line-height: 1.4286;
+    font-feature-settings: 'kern' 1, 'liga' 1;
+  }
+
+  /* Measurements must not jitter as they update. Anything showing a number that
+     changes in place gets tabular figures. */
+  .tabular,
+  input[type='number'],
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--brand));
+    outline-offset: 2px;
+    border-radius: calc(var(--radius) - 1px);
+  }
+}
+
+@layer components {
+  /* Type scale. Set explicitly rather than assembled per-component out of
+     Tailwind defaults, so headings stay consistent across four screens. */
+  .type-display {
+    font-size: 1.75rem;
+    line-height: 2rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  .type-section {
+    font-size: 1.125rem;
+    line-height: 1.5rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  .type-label {
+    font-size: 0.8125rem;
+    line-height: 1.125rem;
+    font-weight: 500;
+  }
+
+  /* Printer's slug: the small mono caps that label a region. Used for section
+     eyebrows in the spec rail and nowhere decorative. */
+  .type-eyebrow {
+    font-family: var(--app-font-mono);
+    font-size: 0.6875rem;
+    line-height: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .type-measure {
+    font-family: var(--app-font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.125rem;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  input[type='search']::-webkit-search-cancel-button {
+    @apply hidden;
+  }
+
+  [contenteditable][data-placeholder]:empty::before {
+    content: attr(data-placeholder);
+    color: hsl(var(--muted-foreground));
+    pointer-events: none;
+  }
+
+  .no-default-hover-elevate { }
+  .no-default-active-elevate { }
+
+  .toggle-elevate::before,
+  .toggle-elevate-2::before {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0px;
+    border-radius: inherit;
+    z-index: -1;
+  }
+
+  .toggle-elevate.toggle-elevated::before {
+    background-color: var(--elevate-2);
+  }
+
+  .border.toggle-elevate::before {
+    inset: -1px;
+  }
+
+  .hover-elevate:not(.no-default-hover-elevate),
+  .active-elevate:not(.no-default-active-elevate),
+  .hover-elevate-2:not(.no-default-hover-elevate),
+  .active-elevate-2:not(.no-default-active-elevate) {
+    position: relative;
+    z-index: 0;
+  }
+
+  .hover-elevate:not(.no-default-hover-elevate)::after,
+  .active-elevate:not(.no-default-active-elevate)::after,
+  .hover-elevate-2:not(.no-default-hover-elevate)::after,
+  .active-elevate-2:not(.no-default-active-elevate)::after {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0px;
+    border-radius: inherit;
+    z-index: 999;
+  }
+
+  .hover-elevate:hover:not(.no-default-hover-elevate)::after,
+  .active-elevate:active:not(.no-default-active-elevate)::after {
+    background-color: var(--elevate-1);
+  }
+
+  .hover-elevate-2:hover:not(.no-default-hover-elevate)::after,
+  .active-elevate-2:active:not(.no-default-active-elevate)::after {
+    background-color: var(--elevate-2);
+  }
+
+  .border.hover-elevate:not(.no-hover-interaction-elevate)::after,
+  .border.active-elevate:not(.no-active-interaction-elevate)::after,
+  .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
+  .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
+  .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
+    inset: -1px;
+  }
+}
+
+/* ============================================================================
+   TipTap editor — tables & images
+   ========================================================================== */
+.ProseMirror {
+  outline: none;
+}
+
+.ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 1rem 0;
+  overflow: hidden;
+}
+
+.ProseMirror th,
+.ProseMirror td {
+  border: 1px solid hsl(var(--border));
+  padding: 0.375rem 0.625rem;
+  vertical-align: top;
+  position: relative;
+  min-width: 3rem;
+}
+
+.ProseMirror th {
+  background-color: hsl(var(--muted));
+  font-weight: 600;
+  text-align: left;
+}
+
+.ProseMirror .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--elevate-1);
+  pointer-events: none;
+}
+
+.ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: hsl(var(--brand));
+  cursor: col-resize;
+}
+
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1rem auto;
+  border-radius: 2px;
+}
+
+.ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid hsl(var(--brand));
+}
+
+/* Equations. Shown as their LaTeX source, not typeset — the export converts to
+   OMML, so the editor only has to make an equation legible and obviously a
+   single unit. Typesetting would mean pulling in KaTeX. */
+.math-inline,
+.math-block {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 0.9em;
+  background: hsl(var(--muted) / 0.6);
+  border: 1px solid hsl(var(--border));
+  border-radius: 3px;
+  white-space: pre-wrap;
+}
+
+.math-inline {
+  padding: 0 0.25em;
+}
+
+.math-block {
+  display: block;
+  margin: 0.75rem auto;
+  padding: 0.5rem 0.75rem;
+  text-align: center;
+}
+
+.math-inline.ProseMirror-selectednode,
+.math-block.ProseMirror-selectednode {
+  outline: 2px solid hsl(var(--brand));
+}
+
+/* Citations. Shown as their cite keys, not as "[1]" — the real marker depends
+   on the style, which the exporter applies, so anything rendered here would be
+   a guess the author might mistake for final copy. */
+.citation {
+  padding: 0 0.2em;
+  border-radius: 3px;
+  background: hsl(var(--brand) / 0.12);
+  color: hsl(var(--brand));
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.citation.ProseMirror-selectednode {
+  outline: 2px solid hsl(var(--brand));
+}
+
+/* ============================================================================
+   THE PAGE
+   ----------------------------------------------------------------------------
+   The signature element. A real sheet at real dimensions, floating on the
+   board, with page breaks drawn where the paper actually runs out.
+   ========================================================================== */
+.doc-stage {
+  /* Zoom scales the sheet without touching the type scale inside it, so the
+     measurements the spec panel reports stay true. */
+  --doc-zoom: 1;
+  display: flex;
+  justify-content: center;
+  padding: 2.5rem 1.5rem 6rem;
+}
+
+.doc-frame {
+  position: relative;
+  transform: scale(var(--doc-zoom));
+  transform-origin: top center;
+}
+
+.doc-page {
+  position: relative;
+  width: var(--doc-w, 8.5in);
+  max-width: 100%;
+  background: hsl(var(--paper));
+  color: hsl(var(--paper-foreground));
+  box-shadow: var(--shadow-sheet);
+  border-radius: 1px;
+  min-height: var(--doc-h, 11in);
+  padding: var(--doc-pt, 1in) var(--doc-pr, 1in) var(--doc-pb, 1in) var(--doc-pl, 1in);
+}
+
+.doc-page .ProseMirror {
+  column-count: var(--doc-cols, 1);
+  column-gap: 0.3in;
+  /* `balance`, not `auto`. With an auto-height container there is no height for
+     `auto` to fill to, so every line lands in column one and the second column
+     stays empty while the sheet grows to the full length of the document.
+     Balancing also makes the page estimate correct: the measured height is then
+     one column's length, and pages = height / printable height regardless of
+     how many columns the style asks for. */
+  column-fill: balance;
+  font-family: var(--doc-font, "Times New Roman"), Georgia, serif;
+  font-size: var(--doc-size, 12pt);
+  line-height: var(--doc-line, 1.5);
+  color: hsl(var(--paper-foreground));
+  min-height: 40vh;
+
+  /* Paper is black-on-white in both themes. These are the Tailwind Typography
+     variables; without pinning them, prose keeps its own palette and text can
+     end up invisible against the sheet. */
+  --tw-prose-body: hsl(var(--paper-foreground));
+  --tw-prose-headings: hsl(var(--paper-foreground));
+  --tw-prose-lead: hsl(var(--paper-foreground));
+  --tw-prose-links: hsl(var(--paper-foreground));
+  --tw-prose-bold: hsl(var(--paper-foreground));
+  --tw-prose-counters: hsl(var(--paper-foreground));
+  --tw-prose-bullets: #666;
+  --tw-prose-hr: #ccc;
+  --tw-prose-quotes: hsl(var(--paper-foreground));
+  --tw-prose-quote-borders: #ccc;
+  --tw-prose-captions: #555;
+  --tw-prose-code: hsl(var(--paper-foreground));
+  --tw-prose-th-borders: #bbb;
+  --tw-prose-td-borders: #ccc;
+}
+
+/* Heading levels.
+   Differentiated by weight, slant and alignment rather than size alone: at
+   IEEE's scale a level-3 heading is 10pt — exactly the body size — so a purely
+   size-based hierarchy renders every level identically. Academic styles solve
+   this the same way, with case and italics. */
+.doc-page .ProseMirror h1 {
+  font-size: var(--doc-h1, 16pt);
+  font-weight: 700;
+  text-align: center;
+  margin: 0.7em 0 0.35em;
+}
+
+/* Only the document's opening heading is the paper title, and only the title
+   spans the measure. Applying column-span to every h1 pulled each section
+   heading across both columns and centred it — correct for a title, wrong for
+   "Introduction". */
+.doc-page .ProseMirror > h1:first-child {
+  column-span: all;
+  margin-top: 0;
+}
+
+.doc-page .ProseMirror h2 {
+  font-size: var(--doc-h2, 13pt);
+  font-weight: 700;
+  font-style: italic;
+  text-align: left;
+  margin: 0.6em 0 0.3em;
+}
+
+.doc-page .ProseMirror h3 {
+  font-size: var(--doc-h3, 12pt);
+  font-weight: 400;
+  font-style: italic;
+  text-align: left;
+  margin: 0.5em 0 0.25em;
+}
+
+.doc-page .ProseMirror p { margin: 0 0 0.5rem; text-align: justify; }
+.doc-page .ProseMirror img { max-width: 100%; height: auto; }
+.doc-page .ProseMirror table { width: 100%; font-size: 0.9em; }
+.doc-page .ProseMirror th,
+.doc-page .ProseMirror td { border: 1px solid #bbb; }
+.doc-page .ProseMirror th { background: #f0f0f0; }
+
+/* Page breaks: drawn where the printable area ends, labelled in the margin.
+   The sheet is one continuous DOM node — TipTap cannot be split across
+   elements — so these are markers over the flow rather than separate sheets. */
+.doc-break {
+  position: absolute;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+  border-top: 1px dashed hsl(var(--border));
+  display: flex;
+  justify-content: center;
+}
+
+.doc-break span {
+  transform: translateY(-50%);
+  background: hsl(var(--paper));
+  padding: 0 0.5rem;
+  font-family: var(--app-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9a9a9a;
+}
+
+/* Plain (non-page) view: a writing surface rather than a facsimile. Unlike the
+   sheet, this one follows the theme, so its prose colors track the tokens. */
+.doc-plain {
+  width: 100%;
+  max-width: 46rem;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--card-border));
+  border-radius: var(--radius);
+  padding: 2.5rem;
+  min-height: 60vh;
+}
+
+.doc-plain .ProseMirror {
+  --tw-prose-body: hsl(var(--foreground));
+  --tw-prose-headings: hsl(var(--foreground));
+  --tw-prose-lead: hsl(var(--muted-foreground));
+  --tw-prose-links: hsl(var(--brand));
+  --tw-prose-bold: hsl(var(--foreground));
+  --tw-prose-counters: hsl(var(--muted-foreground));
+  --tw-prose-bullets: hsl(var(--muted-foreground));
+  --tw-prose-hr: hsl(var(--border));
+  --tw-prose-quotes: hsl(var(--foreground));
+  --tw-prose-quote-borders: hsl(var(--border));
+  --tw-prose-captions: hsl(var(--muted-foreground));
+  --tw-prose-code: hsl(var(--foreground));
+  --tw-prose-th-borders: hsl(var(--border));
+  --tw-prose-td-borders: hsl(var(--border));
+}
+
+/* The one orchestrated moment: after Format rewrites a heading, and when an
+   issue is clicked, the target flashes rather than silently changing. */
+@keyframes doc-flash {
+  0%   { background-color: hsl(var(--brand) / 0.16); }
+  100% { background-color: transparent; }
+}
+
+.doc-flash {
+  animation: doc-flash 900ms ease-out;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Editorial Desk</title>
+    <meta name="description" content="Prepare an academic manuscript for submission: see your paper at true page size, check it against a conference style, and export a formatted DOCX or PDF." />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:title" content="Editorial Desk" />
+    <meta property="og:description" content="Prepare an academic manuscript for submission: see your paper at true page size, check it against a conference style, and export a formatted DOCX or PDF." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Editorial Desk" />
+    <meta name="twitter:description" content="Prepare an academic manuscript for submission: see your paper at true page size, check it against a conference style, and export a formatted DOCX or PDF." />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- One font request. The stylesheet previously @imported Playfair + Inter
+         while this file separately linked Inter, so the app fetched two
+         overlapping families and blocked render on a CSS @import. IBM Plex Sans
+         carries the interface, Plex Mono carries measurements, and no serif is
+         loaded at all — the manuscript preview uses the typeface its StyleSpec
+         asks for, which is a system face. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="/theme-init.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

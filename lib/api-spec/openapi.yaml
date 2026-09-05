@@ -1,0 +1,1061 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification for the academic paper formatting assistant
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Registration, sign-in and session management
+  - name: documents
+    description: Document upload, extraction, editing, formatting and export
+  - name: styles
+    description: Conference formatting style catalog
+
+# Every operation requires a session cookie unless it opts out with
+# `security: []` (health checks and the sign-in endpoints themselves).
+security:
+  - cookieAuth: []
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Liveness check
+      description: Returns server health status. Does not touch the database.
+      security: []
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /readyz:
+    get:
+      operationId: readinessCheck
+      tags: [health]
+      summary: Readiness check
+      description: >-
+        Reports whether this instance can serve traffic: verifies database
+        connectivity and returns current formatting-engine load.
+      security: []
+      responses:
+        "200":
+          description: Ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessStatus"
+        "503":
+          description: Not ready (e.g. the database is unreachable)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessStatus"
+
+  /auth/register:
+    post:
+      operationId: registerUser
+      tags: [auth]
+      summary: Create an account and start a session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Account created; a session cookie is set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "409":
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Invalid registration details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: loginUser
+      tags: [auth]
+      summary: Sign in and start a session
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Signed in; a session cookie is set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Email or password incorrect
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Too many attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logoutUser
+      tags: [auth]
+      summary: End the current session
+      security: []
+      responses:
+        "204":
+          description: Signed out; the session cookie is cleared
+
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get the signed-in user
+      responses:
+        "200":
+          description: The current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/password:
+    post:
+      operationId: changePassword
+      tags: [auth]
+      summary: Change the signed-in user's password
+      description: >-
+        Revokes every other session for the user and re-issues one for the
+        calling device.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordInput"
+      responses:
+        "204":
+          description: Password changed
+        "401":
+          description: Current password incorrect, or not signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: New password does not meet requirements
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /styles:
+    get:
+      operationId: listStyles
+      tags: [styles]
+      summary: List available conference formatting styles
+      responses:
+        "200":
+          description: List of styles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConferenceStyle"
+
+  /document-classes:
+    get:
+      operationId: listDocumentClasses
+      tags: [styles]
+      summary: List available document classes (venue family x genre)
+      responses:
+        "200":
+          description: List of document classes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DocumentClass"
+
+  /documents:
+    get:
+      operationId: listDocuments
+      tags: [documents]
+      summary: List uploaded documents
+      responses:
+        "200":
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DocumentSummary"
+
+  /documents/upload:
+    post:
+      operationId: uploadDocument
+      tags: [documents]
+      summary: Upload a document (PDF/DOCX) and extract its structured content
+      description: >-
+        Multipart form upload. Send the file under the "file" field.
+        Not validated against a JSON schema server-side (handled by multer).
+      requestBody:
+        required: true
+        content:
+          multipart/form-data: {}
+      responses:
+        "201":
+          description: Uploaded and extracted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "422":
+          description: Extraction failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /documents/{id}:
+    get:
+      operationId: getDocument
+      tags: [documents]
+      summary: Get a document with its full editable content
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateDocument
+      tags: [documents]
+      summary: Update a document's title or editor content
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentUpdate"
+      responses:
+        "200":
+          description: Updated document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteDocument
+      tags: [documents]
+      summary: Delete a document
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /documents/{id}/guidelines:
+    post:
+      operationId: setDocumentGuidelines
+      tags: [documents]
+      summary: Apply pasted formatting guidelines to a document
+      description: >-
+        Parses free-text or "key: value" guidelines into a custom StyleSpec.
+        A custom spec supersedes any conference preset, so conferenceStyle is
+        cleared and the document returns to the "extracted" status.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuidelinesInput"
+      responses:
+        "200":
+          description: Document with the resolved style spec
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Guidelines missing or too long
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /documents/{id}/references/bibtex:
+    post:
+      operationId: importDocumentBibtex
+      tags: [documents]
+      summary: Import a BibTeX library as CSL-JSON references
+      description: >-
+        Multipart form upload under the "file" field, or a JSON body with a
+        "bibtex" string. Entries are converted to CSL-JSON and merged into the
+        document's reference library by cite key; existing entries with the same
+        id are replaced.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data: {}
+          application/json:
+            schema:
+              type: object
+              properties:
+                bibtex:
+                  type: string
+      responses:
+        "200":
+          description: Document with the merged reference library
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /documents/{id}/guidelines/file:
+    post:
+      operationId: uploadDocumentGuidelines
+      tags: [documents]
+      summary: Apply formatting guidelines from an uploaded file
+      description: >-
+        Multipart form upload under the "file" field. Text formats
+        (.txt/.md/.yaml) are read directly; .pdf/.docx have their text
+        extracted first.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data: {}
+      responses:
+        "200":
+          description: Document with the resolved style spec
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "415":
+          description: Unsupported file type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: No readable guidelines text in the file
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /documents/{id}/analyze:
+    post:
+      operationId: analyzeDocument
+      tags: [documents]
+      summary: Run an AI compliance check of the document against the selected conference style
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of formatting issues found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /documents/{id}/format:
+    post:
+      operationId: formatDocument
+      tags: [documents]
+      summary: Reformat the document's content to match a conference style (layout, headings, spacing, references)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FormatDocumentInput"
+      responses:
+        "200":
+          description: Formatted document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Formatting failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /documents/{id}/export:
+    get:
+      operationId: exportDocument
+      tags: [documents]
+      summary: Export the formatted document as a downloadable file
+      description: >-
+        Accepts an optional `?format=docx|pdf` query parameter (default docx).
+        It is documented here rather than declared as a parameter because orval
+        would then emit an `ExportDocumentParams` symbol in both the zod and
+        the types output, which collide under this package's `export *` index.
+        PDF conversion requires LibreOffice on the server.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Exported file
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: pf_session
+      description: >-
+        httpOnly session cookie issued by /auth/login and /auth/register.
+        Browsers attach it automatically; requests must be sent with
+        credentials included.
+
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ReadinessStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, unavailable]
+        database:
+          type: string
+          enum: [ok, unreachable]
+        engine:
+          type: object
+          description: Current formatting-engine saturation
+          properties:
+            active:
+              type: integer
+            queued:
+              type: integer
+            maxConcurrency:
+              type: integer
+
+    User:
+      type: object
+      required: [id, email, displayName, createdAt]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        displayName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    RegisterInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        password:
+          type: string
+          minLength: 8
+          maxLength: 200
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 120
+
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          maxLength: 200
+
+    ChangePasswordInput:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+          maxLength: 200
+
+    GuidelinesInput:
+      type: object
+      required: [guidelines]
+      properties:
+        guidelines:
+          type: string
+          minLength: 1
+          maxLength: 200000
+
+    StyleSpec:
+      type: object
+      description: >-
+        Resolved formatting spec that drives both the compliance check and the
+        DOCX/PDF export. snake_case keys are intentional — the same JSON is
+        handed to the Python engine unchanged.
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        body_font:
+          type: string
+        heading_font:
+          type: string
+        body_size_pt:
+          type: number
+        heading_sizes_pt:
+          type: object
+          additionalProperties:
+            type: number
+        line_spacing:
+          type: number
+        margins_in:
+          type: object
+          properties:
+            top:
+              type: number
+            bottom:
+              type: number
+            left:
+              type: number
+            right:
+              type: number
+        page_width_in:
+          type: number
+          description: Page width in inches (8.5 for US Letter, 8.27 for A4)
+        page_height_in:
+          type: number
+          description: Page height in inches (11 for US Letter, 11.69 for A4)
+        columns:
+          type: integer
+        heading_case:
+          type: string
+          enum: [title, upper, sentence, none]
+        citation_style:
+          type: string
+          enum: [numeric, author-date]
+        required_sections:
+          type: array
+          items:
+            type: string
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    ConferenceStyle:
+      type: object
+      required: [id, name, description]
+      properties:
+        id:
+          type: string
+          enum: [ieee, apa, acm]
+        name:
+          type: string
+        description:
+          type: string
+
+    FormattingIssue:
+      type: object
+      required: [id, severity, message]
+      properties:
+        id:
+          type: string
+        severity:
+          type: string
+          enum: [error, warning, info]
+        message:
+          type: string
+        location:
+          type: ["string", "null"]
+
+    DocumentSummary:
+      type: object
+      required: [id, title, status, conferenceStyle, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        originalFilename:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [extracted, formatted]
+        conferenceStyle:
+          type: ["string", "null"]
+          enum: [ieee, apa, acm, null]
+        documentClass:
+          type: ["string", "null"]
+          enum: [ieee-conference, ieee-journal, acm-conference, apa-journal, apa-dissertation, null]
+          description: >-
+            Supersedes conferenceStyle. Absent on documents created before
+            classes existed, which resolve to their family's default.
+        hasGuidelines:
+          type: boolean
+          description: Whether custom guidelines have been applied to this document
+        styleName:
+          type: ["string", "null"]
+          description: Display name of the resolved style, custom or preset
+        issueCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PageBudget:
+      type: object
+      required: [maxPages, includesReferences]
+      properties:
+        maxPages:
+          type: number
+        includesReferences:
+          type: boolean
+          description: >-
+            Whether the reference list counts against the limit. Calls for
+            papers distinguish these and the difference is real work.
+
+    DocumentClass:
+      type: object
+      required: [id, name, description, family, genre, toc]
+      description: >-
+        Venue family x genre. "IEEE" is a family, not a format — a conference
+        paper and a dissertation need different structure from the same
+        typography.
+      properties:
+        id:
+          type: string
+          enum: [ieee-conference, ieee-journal, acm-conference, apa-journal, apa-dissertation]
+        name:
+          type: string
+        description:
+          type: string
+        family:
+          type: string
+          enum: [ieee, apa, acm, custom]
+        genre:
+          type: string
+          enum: [conference_paper, journal_article, thesis]
+        toc:
+          type: string
+          enum: [required, optional, forbidden]
+        pageBudget:
+          oneOf:
+            - $ref: "#/components/schemas/PageBudget"
+            - type: "null"
+
+    Reference:
+      type: object
+      required: [id]
+      description: >-
+        A CSL-JSON bibliography item — the interchange format Zotero, Mendeley
+        and pandoc all speak. Additional CSL fields are permitted and preserved;
+        only `id` is required, because that is what a citation points at.
+      additionalProperties: true
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        title:
+          type: string
+        author:
+          type: array
+          items:
+            type: object
+            properties:
+              family:
+                type: string
+              given:
+                type: string
+              literal:
+                type: string
+        issued:
+          type: object
+          description: 'CSL date, e.g. {"date-parts": [[2020, 5]]}. Only the year is used.'
+          properties:
+            date-parts:
+              type: array
+              items:
+                type: array
+                items:
+                  type: integer
+            literal:
+              type: string
+        container-title:
+          type: string
+        publisher:
+          type: string
+        volume:
+          type: string
+        issue:
+          type: string
+        page:
+          type: string
+        edition:
+          type: string
+        DOI:
+          type: string
+        URL:
+          type: string
+        literal:
+          type: string
+          description: Verbatim source text for a reference that could not be parsed into fields.
+
+    SuggestedClass:
+      type: object
+      required: [classId, confidence, reasons]
+      description: >-
+        What the manuscript looks like, inferred from its own shape at upload.
+        A suggestion only — nothing applies it.
+      properties:
+        classId:
+          type: string
+        confidence:
+          type: string
+          enum: [high, medium, low]
+        reasons:
+          type: array
+          items:
+            type: string
+
+    Affiliation:
+      type: object
+      required: [id, organization]
+      properties:
+        id:
+          type: string
+          description: Client-generated identifier, referenced by Author.affiliationIds
+        organization:
+          type: string
+        department:
+          type: ["string", "null"]
+        city:
+          type: ["string", "null"]
+        country:
+          type: ["string", "null"]
+
+    Author:
+      type: object
+      required: [id, given, family, affiliationIds, corresponding, equalContribution]
+      description: >-
+        Given and family names are stored separately and joined for display.
+        The split exists for citation rendering, where the same person appears
+        as "Smith, J. A." — a full name cannot be reliably split after the fact.
+      properties:
+        id:
+          type: string
+        given:
+          type: string
+        family:
+          type: string
+        literal:
+          type: ["string", "null"]
+          description: >-
+            Overrides given/family for names that do not decompose — mononyms,
+            and organisations credited as an author.
+        suffix:
+          type: ["string", "null"]
+        affiliationIds:
+          type: array
+          description: References Affiliation.id. Order is significant.
+          items:
+            type: string
+        email:
+          type: ["string", "null"]
+        orcid:
+          type: ["string", "null"]
+        corresponding:
+          type: boolean
+        equalContribution:
+          type: boolean
+
+    Document:
+      type: object
+      required: [id, title, authors, affiliations, references, status, conferenceStyle, editorContent, extractedContent, formattingIssues, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        authors:
+          type: array
+          items:
+            $ref: "#/components/schemas/Author"
+        affiliations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Affiliation"
+        references:
+          type: array
+          items:
+            $ref: "#/components/schemas/Reference"
+        originalFilename:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [extracted, formatted]
+        conferenceStyle:
+          type: ["string", "null"]
+          enum: [ieee, apa, acm, null]
+        documentClass:
+          type: ["string", "null"]
+          enum: [ieee-conference, ieee-journal, acm-conference, apa-journal, apa-dissertation, null]
+          description: >-
+            Supersedes conferenceStyle. Absent on documents created before
+            classes existed, which resolve to their family's default.
+        pageBudget:
+          oneOf:
+            - $ref: "#/components/schemas/PageBudget"
+            - type: "null"
+          description: >-
+            A page limit read from the user's guidelines. Overrides the
+            document class's own budget.
+        suggestedClass:
+          oneOf:
+            - $ref: "#/components/schemas/SuggestedClass"
+            - type: "null"
+          description: Inferred at upload from the manuscript's shape. Never applied automatically.
+        guidelinesText:
+          type: ["string", "null"]
+          description: Raw formatting guidelines supplied by the user, if any
+        styleSpec:
+          oneOf:
+            - $ref: "#/components/schemas/StyleSpec"
+            - type: "null"
+          description: >-
+            The resolved style the editor renders and the exporter applies.
+            Derived from guidelines when present, otherwise the source
+            document's own design or a conference preset.
+        editorContent:
+          description: TipTap/ProseMirror JSON document
+        extractedContent:
+          description: Raw structured extraction produced by the extraction engine (sections, references, images, tables)
+        formattingIssues:
+          type: array
+          items:
+            $ref: "#/components/schemas/FormattingIssue"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    DocumentUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        editorContent:
+          description: TipTap/ProseMirror JSON document
+        authors:
+          type: array
+          description: Replaces the stored author list wholesale; order is preserved.
+          items:
+            $ref: "#/components/schemas/Author"
+        affiliations:
+          type: array
+          description: Replaces the stored affiliation list wholesale.
+          items:
+            $ref: "#/components/schemas/Affiliation"
+        references:
+          type: array
+          description: Replaces the stored CSL-JSON reference library wholesale.
+          items:
+            $ref: "#/components/schemas/Reference"
+
+    FormatDocumentInput:
+      type: object
+      description: >-
+        Optional. documentClass selects a class and is preferred; conferenceStyle
+        is the older form and resolves to its family's default class. Either
+        replaces a custom guidelines spec. Omitting both formats with whatever is
+        already stored on the document.
+      properties:
+        conferenceStyle:
+          type: string
+          enum: [ieee, apa, acm]
+        documentClass:
+          type: string
+          enum: [ieee-conference, ieee-journal, acm-conference, apa-journal, apa-dissertation]
