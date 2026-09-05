@@ -109,6 +109,36 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
     const versions = (id: number, cookie = aliceCookie) =>
       request(app).get(`/api/documents/${id}/versions`).set("Cookie", cookie);
 
+    it("offers a public fictional example and creates private copies only after sign-in", async () => {
+      const example = await request(app).get("/api/examples/manuscript");
+      expect(example.status).toBe(200);
+      expect(example.body.id).toBe(0);
+      expect(example.body.extractedContent.sample).toBe(true);
+      expect(example.body.ownerId).toBeUndefined();
+      expect(example.body.sourceFilePath).toBeUndefined();
+      expect((await request(app).post("/api/documents/sample")).status).toBe(
+        401,
+      );
+      const copy = await request(app)
+        .post("/api/documents/sample")
+        .set("Cookie", aliceCookie);
+      expect(copy.status).toBe(201);
+      expect(copy.body.id).toBeGreaterThan(0);
+      expect(copy.body.editorContent).toEqual(example.body.editorContent);
+      expect(copy.body.revision).toBe(0);
+      const path = `/api/documents/${copy.body.id}`;
+      expect(
+        (await request(app).get(path).set("Cookie", aliceCookie)).status,
+      ).toBe(200);
+      expect(
+        (await request(app).get(path).set("Cookie", bobCookie)).status,
+      ).toBe(404);
+      expect(
+        (await request(app).get("/api/documents/0").set("Cookie", aliceCookie))
+          .status,
+      ).toBe(404);
+    });
+
     it("previews without modifying the document or creating a version", async () => {
       const doc = await seed();
       const preview = await request(app)

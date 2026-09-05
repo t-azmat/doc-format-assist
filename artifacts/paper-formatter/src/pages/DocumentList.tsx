@@ -1,4 +1,4 @@
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   FileText,
   CheckCircle2,
@@ -18,6 +18,18 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useSampleManuscript } from "@/hooks/use-sample-manuscript";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,9 +63,47 @@ export default function DocumentList() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [uploadName, setUploadName] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<{
+    id: number;
+    title: string;
+  } | null>(null);
+  const busy = useRef(false);
+  const sample = useSampleManuscript();
+  const visible = (documents ?? []).filter(
+    (doc) =>
+      (filter === "all" || doc.status === filter) &&
+      [
+        doc.title,
+        doc.originalFilename,
+        doc.styleName,
+        doc.documentClass,
+        doc.conferenceStyle,
+      ].some((value) =>
+        value?.toLowerCase().includes(search.trim().toLowerCase()),
+      ),
+  );
 
   const uploadFile = useCallback(
     async (file: File) => {
+      if (busy.current) return;
+      if (
+        !/\.(pdf|docx)$/i.test(file.name) ||
+        !file.size ||
+        file.size > 50 * 1024 * 1024
+      ) {
+        toast({
+          title: "Choose a PDF or DOCX",
+          description: "Use a non-empty PDF or Word document up to 50 MB.",
+          variant: "destructive",
+        });
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+      busy.current = true;
+      setUploadName(file.name);
       setIsUploading(true);
       try {
         const formData = new FormData();
@@ -88,6 +138,7 @@ export default function DocumentList() {
           variant: "destructive",
         });
       } finally {
+        busy.current = false;
         setIsUploading(false);
         if (fileInputRef.current) fileInputRef.current.value = "";
       }
@@ -97,16 +148,30 @@ export default function DocumentList() {
 
   // The command palette can ask for the picker; it lives here.
   useEffect(() => {
-    const open = () => fileInputRef.current?.click();
+    const open = () => {
+      if (!busy.current) fileInputRef.current?.click();
+    };
+    const protectUpload = (event: BeforeUnloadEvent) => {
+      if (busy.current) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
     window.addEventListener("app:upload", open);
-    return () => window.removeEventListener("app:upload", open);
+    window.addEventListener("beforeunload", protectUpload);
+    return () => {
+      window.removeEventListener("app:upload", open);
+      window.removeEventListener("beforeunload", protectUpload);
+    };
   }, []);
 
   const handleDelete = async (id: number) => {
+    if (deleteDocument.isPending) return;
     try {
       await deleteDocument.mutateAsync({ id });
       queryClient.invalidateQueries({ queryKey: getListDocumentsQueryKey() });
       toast({ title: "Manuscript deleted" });
+      setPendingDelete(null);
     } catch {
       toast({
         title: "Couldn't delete that manuscript",
@@ -129,25 +194,32 @@ export default function DocumentList() {
     <div
       className="mx-auto w-full max-w-6xl flex-1 px-6 py-8"
       onDragOver={(event) => {
+        if (!event.dataTransfer.types.includes("Files") || busy.current) return;
         event.preventDefault();
         setDragging(true);
       }}
       onDragLeave={(event) => {
         // Only clear when the pointer actually leaves the region, not when it
         // crosses onto a child element.
-        if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+        if (
+          !(event.relatedTarget instanceof Node) ||
+          !event.currentTarget.contains(event.relatedTarget)
+        ) {
           setDragging(false);
         }
       }}
       onDrop={onDrop}
     >
-      <div className="mb-7 flex items-end justify-between gap-4">
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="type-display text-foreground">Workspace</h1>
+          <p className="mb-2 font-mono text-xs uppercase tracking-wider text-brand">
+            Your research desk
+          </p>
+          <h1 className="type-display text-foreground">Your manuscripts</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {hasDocuments
               ? `${documents!.length} ${documents!.length === 1 ? "manuscript" : "manuscripts"}`
-              : "Nothing here yet"}
+              : "Start with a draft. We'll help you work through the details."}
           </p>
         </div>
 
@@ -155,12 +227,24 @@ export default function DocumentList() {
           type="file"
           ref={fileInputRef}
           className="hidden"
+          aria-label="Upload manuscript"
           accept={ACCEPT}
           onChange={(event) => {
             const file = event.target.files?.[0];
             if (file) void uploadFile(file);
           }}
         />
+        {hasDocuments && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="sm:ml-auto"
+            disabled={isUploading || sample.creating}
+            onClick={() => void sample.create()}
+          >
+            {sample.creating ? "Opening…" : "Open sample"}
+          </Button>
+        )}
         {hasDocuments && (
           <Button
             onClick={() => fileInputRef.current?.click()}
@@ -177,10 +261,74 @@ export default function DocumentList() {
         )}
       </div>
 
+      {isUploading && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mb-6 flex items-start gap-3 rounded-lg border border-brand/30 bg-card p-5"
+        >
+          <Loader2 className="mt-1 h-5 w-5 shrink-0 animate-spin text-brand" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium">Reading your manuscript…</p>
+            <p className="mt-1 truncate text-sm text-muted-foreground">
+              {uploadName}
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              PDF extraction can take a few minutes. Keep this tab open; the
+              editor will open when it's ready.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {hasDocuments && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <Input
+            aria-label="Search manuscripts"
+            placeholder="Search title, file, or style…"
+            className="sm:max-w-sm"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <div
+            role="group"
+            aria-label="Filter manuscripts"
+            className="flex gap-1 rounded-md border border-border bg-card p-1"
+          >
+            {[
+              ["all", "All drafts"],
+              ["extracted", "Unformatted"],
+              ["formatted", "Formatted"],
+            ].map(([value, label]) => (
+              <Button
+                key={value}
+                size="sm"
+                variant={filter === value ? "secondary" : "ghost"}
+                aria-pressed={filter === value}
+                onClick={() => setFilter(value)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {isError ? (
-        <div role="alert" className="rounded-md border border-border p-6 text-center">
-          <p className="text-sm">We couldn't load your manuscripts. Please check your connection.</p>
-          <Button variant="outline" className="mt-4" onClick={() => void refetch()}>Try again</Button>
+        <div
+          role="alert"
+          className="rounded-md border border-border p-6 text-center"
+        >
+          <p className="text-sm">
+            We couldn't load your manuscripts. Please check your connection.
+          </p>
+          <Button
+            variant="outline"
+            className="mt-4"
+            onClick={() => void refetch()}
+          >
+            Try again
+          </Button>
         </div>
       ) : isLoading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -190,11 +338,28 @@ export default function DocumentList() {
         </div>
       ) : hasDocuments ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {documents!.map((doc) => (
+          {!visible.length && (
+            <div className="col-span-full rounded-lg border border-dashed border-border bg-card p-10 text-center">
+              <h2 className="text-base font-medium">No manuscripts match</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Try a different title or show all drafts.
+              </p>
+              <Button
+                variant="outline"
+                className="mt-4"
+                onClick={() => {
+                  setSearch("");
+                  setFilter("all");
+                }}
+              >
+                Clear filters
+              </Button>
+            </div>
+          )}
+          {visible.map((doc) => (
             <article
               key={doc.id}
-              className="group relative flex cursor-pointer flex-col rounded-md border border-card-border bg-card transition-shadow hover:shadow-md"
-              onClick={() => setLocation(`/documents/${doc.id}`)}
+              className="group relative flex flex-col rounded-lg border border-card-border bg-card transition-shadow hover:shadow-md"
               data-testid={`card-document-${doc.id}`}
             >
               <div className="flex-1 p-4">
@@ -207,11 +372,14 @@ export default function DocumentList() {
                   </span>
 
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenuTrigger
+                      asChild
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="-mr-1.5 -mt-1.5 h-7 w-7 text-muted-foreground opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                        className="-mr-1.5 -mt-1.5 h-8 w-8 text-muted-foreground"
                         aria-label={`Actions for ${doc.title}`}
                       >
                         <MoreVertical className="h-3.5 w-3.5" />
@@ -222,7 +390,7 @@ export default function DocumentList() {
                         className="text-destructive focus:bg-destructive/10 focus:text-destructive"
                         onClick={(e) => {
                           e.stopPropagation();
-                          void handleDelete(doc.id);
+                          setPendingDelete({ id: doc.id, title: doc.title });
                         }}
                       >
                         <Trash2 className="mr-2 h-3.5 w-3.5" />
@@ -233,20 +401,27 @@ export default function DocumentList() {
                 </div>
 
                 <h2 className="type-label line-clamp-2 leading-snug text-foreground transition-colors group-hover:text-brand">
-                  {doc.title || "Untitled manuscript"}
+                  <Link
+                    href={`/documents/${doc.id}`}
+                    className="rounded-sm hover:text-brand hover:underline focus-visible:outline-2 focus-visible:outline-brand"
+                  >
+                    {doc.title || "Untitled manuscript"}
+                  </Link>
                 </h2>
                 <p
                   className="mt-1 truncate text-xs text-muted-foreground"
                   title={doc.originalFilename || ""}
                 >
-                  {doc.originalFilename || "No source file"}
+                  {doc.originalFilename || "Created in your workspace"}
                 </p>
               </div>
 
               <footer className="flex items-center justify-between border-t border-border/60 px-4 py-2.5 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <Clock className="h-3 w-3" />
-                  {formatDistanceToNow(new Date(doc.updatedAt), { addSuffix: true })}
+                  {formatDistanceToNow(new Date(doc.updatedAt), {
+                    addSuffix: true,
+                  })}
                 </span>
 
                 {doc.issueCount !== undefined && doc.issueCount > 0 ? (
@@ -265,10 +440,7 @@ export default function DocumentList() {
           ))}
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading}
+        <section
           className={`flex w-full flex-col items-center justify-center rounded-md border border-dashed px-6 py-16 text-center transition-colors ${
             dragging
               ? "border-brand bg-brand/5"
@@ -284,15 +456,99 @@ export default function DocumentList() {
             <FileText className="mb-4 h-6 w-6 text-muted-foreground" />
           )}
           <span className="type-section text-foreground">
-            {dragging ? "Drop it here" : "Start with a draft"}
+            {dragging ? "Drop it here" : "Bring your first manuscript"}
           </span>
           <span className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Drop a PDF or Word file anywhere on this page, or click to choose one.
-            Your paper is extracted into an editor and checked against the style
-            you pick.
+            Drop a PDF or Word file here. If you have the original DOCX, start
+            there for the best chance of preserving its structure.
           </span>
-        </button>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Button
+              disabled={isUploading || sample.creating}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              Choose manuscript
+            </Button>
+            <Button
+              variant="outline"
+              disabled={isUploading || sample.creating}
+              onClick={() => void sample.create()}
+            >
+              {sample.creating ? "Opening sample…" : "Open a sample manuscript"}
+            </Button>
+          </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            PDF or DOCX · Up to 50 MB · The sample uses fictional content.
+          </p>
+        </section>
       )}
+
+      {!hasDocuments && !isLoading && !isError && (
+        <section
+          aria-label="Getting started"
+          className="mt-8 grid gap-5 sm:grid-cols-3"
+        >
+          {[
+            [
+              "01",
+              "Review your draft",
+              "Check imported text, equations, and figures against the original.",
+            ],
+            [
+              "02",
+              "Set your requirements",
+              "Add your venue's instructions or choose a starting style.",
+            ],
+            [
+              "03",
+              "Preview and export",
+              "Compare changes, apply them, and inspect the final Word or PDF file.",
+            ],
+          ].map(([step, title, text]) => (
+            <div key={step} className="flex gap-3">
+              <span className="mt-1 font-mono text-xs text-brand">{step}</span>
+              <div>
+                <h3 className="text-sm font-medium">{title}</h3>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {text}
+                </p>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleteDocument.isPending) setPendingDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this manuscript?</AlertDialogTitle>
+            <AlertDialogDescription>
+              “{pendingDelete?.title}” and its saved versions will be
+              permanently deleted. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteDocument.isPending}>
+              Keep manuscript
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteDocument.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(event) => {
+                event.preventDefault();
+                if (pendingDelete) void handleDelete(pendingDelete.id);
+              }}
+            >
+              {deleteDocument.isPending ? "Deleting…" : "Delete manuscript"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Drop target overlay for the populated state, so dragging onto a full
           workspace works the same as onto an empty one. */}
@@ -300,8 +556,12 @@ export default function DocumentList() {
         <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center bg-background/70">
           <div className="rounded-md border border-dashed border-brand bg-card px-8 py-6 text-center">
             <Upload className="mx-auto mb-3 h-5 w-5 text-brand" />
-            <p className="type-label text-foreground">Drop to add a manuscript</p>
-            <p className="mt-1 text-xs text-muted-foreground">PDF or Word, up to 50MB</p>
+            <p className="type-label text-foreground">
+              Drop to add a manuscript
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              PDF or Word, up to 50MB
+            </p>
           </div>
         </div>
       )}

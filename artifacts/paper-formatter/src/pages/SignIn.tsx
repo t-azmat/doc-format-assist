@@ -4,12 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
+import { Link } from "wouter";
+import { ArrowRight, Check } from "lucide-react";
 
 type Mode = "login" | "register";
 
-export default function SignIn() {
+export default function SignIn({
+  initialMode = "login",
+}: {
+  initialMode?: Mode;
+}) {
   const { login, register } = useAuth();
-  const [mode, setMode] = useState<Mode>("login");
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -44,11 +50,43 @@ export default function SignIn() {
   };
 
   return (
-    <div className="flex flex-1 items-center justify-center px-6 py-14">
+    <div className="mx-auto grid w-full max-w-5xl flex-1 items-center gap-10 px-6 py-12 md:grid-cols-2 md:gap-20">
+      <aside>
+        <p className="font-mono text-xs uppercase tracking-wider text-brand">
+          Your manuscript, with a clearer next step
+        </p>
+        <h2 className="mt-4 font-serif text-4xl leading-tight">
+          A place to prepare
+          <br />
+          your next submission.
+        </h2>
+        <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
+          Bring a draft, understand the formatting requirements, and review the
+          changes before you export.
+        </p>
+        <ul className="mt-6 space-y-3 text-sm">
+          {[
+            "Start with Word, PDF, or a sample manuscript",
+            "Review changes before applying formatting",
+            "Restore earlier drafts from saved versions",
+          ].map((item) => (
+            <li key={item} className="flex items-start gap-2">
+              <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+              {item}
+            </li>
+          ))}
+        </ul>
+        <Link
+          href="/demo"
+          className="mt-7 inline-flex items-center gap-2 text-sm font-medium text-brand hover:underline"
+        >
+          Try the sample first <ArrowRight className="h-4 w-4" />
+        </Link>
+      </aside>
       {/* The form sits on a panel rather than directly on the board. Inputs use
           the board color as their fill so they read as recessed wells — on a
           page whose background is also board, they disappeared entirely. */}
-      <div className="w-full max-w-[21rem] rounded-md border border-card-border bg-card p-7">
+      <div className="w-full rounded-xl border border-card-border bg-card p-7 shadow-sm">
         {/* The one place a page is drawn at rest: a sheet with a rule on it,
             same mark as the header, at a size where it reads as an object. */}
         <svg
@@ -82,7 +120,7 @@ export default function SignIn() {
         </h1>
         <p className="mt-1.5 text-sm leading-snug text-muted-foreground">
           {isRegister
-            ? "Your manuscripts stay private to your account."
+            ? "Create your workspace, then upload a draft or open a sample."
             : "Pick up where you left off."}
         </p>
 
@@ -95,6 +133,7 @@ export default function SignIn() {
               <Input
                 id="displayName"
                 autoComplete="name"
+                maxLength={200}
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
                 disabled={submitting}
@@ -109,6 +148,7 @@ export default function SignIn() {
             <Input
               id="email"
               type="email"
+              maxLength={320}
               required
               autoComplete="email"
               value={email}
@@ -124,6 +164,7 @@ export default function SignIn() {
             <Input
               id="password"
               type="password"
+              maxLength={200}
               required
               autoComplete={isRegister ? "new-password" : "current-password"}
               value={password}
@@ -131,7 +172,9 @@ export default function SignIn() {
               disabled={submitting}
             />
             {isRegister && (
-              <p className="text-xs text-muted-foreground">At least 8 characters.</p>
+              <p className="text-xs text-muted-foreground">
+                At least 8 characters.
+              </p>
             )}
           </div>
 
@@ -145,7 +188,9 @@ export default function SignIn() {
           )}
 
           <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+            {submitting && (
+              <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+            )}
             {isRegister ? "Create account" : "Sign in"}
           </Button>
         </form>

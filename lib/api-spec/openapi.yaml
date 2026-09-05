@@ -235,6 +235,34 @@ paths:
                 items:
                   $ref: "#/components/schemas/DocumentSummary"
 
+  /examples/manuscript:
+    get:
+      operationId: getExampleManuscript
+      tags: [documents]
+      security: []
+      summary: Get a fictional sample for the public interactive walkthrough
+      responses:
+        "200":
+          description: Read-only demonstration content, never a user's manuscript
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+  /documents/sample:
+    post:
+      operationId: createSampleManuscript
+      tags: [documents]
+      summary: Create a fictional sample draft in the caller's workspace
+      responses:
+        "201":
+          description: The caller's new sample manuscript
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "401":
+          description: Authentication required
+
   /documents/upload:
     post:
       operationId: uploadDocument

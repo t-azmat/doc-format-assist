@@ -125,6 +125,7 @@ export default function DocumentEditor() {
   const { toast } = useToast();
 
   const [title, setTitle] = useState("");
+  const [sampleGuideDismissed, setSampleGuideDismissed] = useState(false);
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [guidelines, setGuidelines] = useState("");
   const [applyingGuidelines, setApplyingGuidelines] = useState(false);
@@ -282,6 +283,9 @@ export default function DocumentEditor() {
   }, [autosave]);
 
   const editor = useEditor({
+    // Create after React commits the lazy page. A suspended first render can
+    // otherwise retain an instance that TipTap has already destroyed.
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       Typography,
@@ -795,6 +799,30 @@ export default function DocumentEditor() {
           </div>
         </header>
 
+        {!sampleGuideDismissed &&
+          (document.extractedContent as { sample?: boolean } | null)
+            ?.sample && (
+            <div className="flex items-start justify-between gap-3 border-b border-brand/20 bg-brand/5 px-4 py-3">
+              <div>
+                <p className="text-xs font-medium text-brand">
+                  Your sample manuscript
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  This draft and its reference are fictional. Try shortening the
+                  abstract to 60 words, then use Review format. After applying
+                  changes, open Versions to recover the original.
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 shrink-0 text-xs"
+                onClick={() => setSampleGuideDismissed(true)}
+              >
+                Got it
+              </Button>
+            </div>
+          )}
         <EditorToolbar editor={editor} />
 
         <ScrollArea className="flex-1 bg-background">

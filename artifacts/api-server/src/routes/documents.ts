@@ -27,6 +27,7 @@ import {
   type StyleSelector,
 } from "../lib/pythonClient";
 import { resolveGuidelines } from "../lib/guidelines";
+import { sampleDocumentValues } from "../lib/sampleDocument";
 import { currentUserId, requireAuth } from "../middlewares/auth";
 import { aiRateLimit, heavyRateLimit } from "../middlewares/rateLimit";
 
@@ -299,6 +300,36 @@ async function findDocumentOrRespond404(
 function ownedDocument(id: number, ownerId: number) {
   return and(eq(documentsTable.id, id), eq(documentsTable.ownerId, ownerId));
 }
+
+router.get("/examples/manuscript", (_req, res) => {
+  const createdAt = new Date("2026-01-01T00:00:00.000Z");
+  res.json(
+    toDocumentResponse({
+      ...sampleDocumentValues(),
+      id: 0,
+      ownerId: 0,
+      revision: 0,
+      sourceFilePath: null,
+      createdAt,
+      updatedAt: createdAt,
+    }),
+  );
+});
+
+router.post("/documents/sample", heavyRateLimit, async (req, res, next) => {
+  try {
+    const [row] = await db
+      .insert(documentsTable)
+      .values({
+        ...sampleDocumentValues(),
+        ownerId: currentUserId(req),
+      })
+      .returning();
+    res.status(201).json(toDocumentResponse(row));
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get("/documents", async (req, res, next) => {
   try {

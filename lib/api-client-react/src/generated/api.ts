@@ -845,6 +845,157 @@ export function useListDocuments<TData = Awaited<ReturnType<typeof listDocuments
 
 
 
+export const getGetExampleManuscriptUrl = () => {
+
+
+
+
+  return `/api/examples/manuscript`
+}
+
+/**
+ * @summary Get a fictional sample for the public interactive walkthrough
+ */
+export const getExampleManuscript = async ( options?: Parameters<typeof customFetch>[1]): Promise<Document> => {
+
+  return customFetch<Document>(getGetExampleManuscriptUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetExampleManuscriptQueryKey = () => {
+    return [
+    `/api/examples/manuscript`
+    ] as const;
+    }
+
+
+export const getGetExampleManuscriptQueryOptions = <TData = Awaited<ReturnType<typeof getExampleManuscript>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExampleManuscript>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetExampleManuscriptQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getExampleManuscript>>> = ({ signal }) => getExampleManuscript({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getExampleManuscript>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetExampleManuscriptQueryResult = NonNullable<Awaited<ReturnType<typeof getExampleManuscript>>>
+export type GetExampleManuscriptQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get a fictional sample for the public interactive walkthrough
+ */
+
+export function useGetExampleManuscript<TData = Awaited<ReturnType<typeof getExampleManuscript>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getExampleManuscript>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetExampleManuscriptQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateSampleManuscriptUrl = () => {
+
+
+
+
+  return `/api/documents/sample`
+}
+
+/**
+ * @summary Create a fictional sample draft in the caller's workspace
+ */
+export const createSampleManuscript = async ( options?: Parameters<typeof customFetch>[1]): Promise<Document> => {
+
+  return customFetch<Document>(getCreateSampleManuscriptUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCreateSampleManuscriptMutationKey = () => ['createSampleManuscript'] as const;
+
+export const getCreateSampleManuscriptMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSampleManuscript>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createSampleManuscript>>, TError,void, TContext> => {
+
+const mutationKey = getCreateSampleManuscriptMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createSampleManuscript>>, void> = () => {
+
+
+          return  createSampleManuscript(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateSampleManuscriptMutationResult = NonNullable<Awaited<ReturnType<typeof createSampleManuscript>>>
+
+    export type CreateSampleManuscriptMutationError = ErrorType<void>
+
+
+    /**
+ * @summary Create a fictional sample draft in the caller's workspace
+ */
+export const useCreateSampleManuscript = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createSampleManuscript>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createSampleManuscript>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCreateSampleManuscriptMutationOptions(options));
+    }
+
 export const getUploadDocumentUrl = () => {
 
 

@@ -1,20 +1,37 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from '@/components/ui/toaster';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import NotFound from '@/pages/not-found';
-import { Route, Switch, Router as WouterRouter, Link } from 'wouter';
-import DocumentList from '@/pages/DocumentList';
-import { lazy, Suspense } from 'react';
-import SignIn from '@/pages/SignIn';
-import { Loader2, LogOut } from 'lucide-react';
-import { useHealthCheck, getHealthCheckQueryKey } from '@workspace/api-client-react';
-import { AuthProvider, useAuth } from '@/lib/auth';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { CommandPalette } from '@/components/CommandPalette';
-import { Button } from '@/components/ui/button';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import NotFound from "@/pages/not-found";
+import { Route, Switch, Router as WouterRouter, Link, Redirect } from "wouter";
+import DocumentList from "@/pages/DocumentList";
+import { lazy, Suspense } from "react";
+import SignIn from "@/pages/SignIn";
+import Landing from "@/pages/Landing";
+import { Loader2, LogOut } from "lucide-react";
+import {
+  useHealthCheck,
+  getHealthCheckQueryKey,
+} from "@workspace/api-client-react";
+import { AuthProvider, useAuth } from "@/lib/auth";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { CommandPalette } from "@/components/CommandPalette";
+import { Button } from "@/components/ui/button";
 
-const DocumentEditor = lazy(() => import('@/pages/DocumentEditor'));
+const DocumentEditor = lazy(() => import("@/pages/DocumentEditor"));
+const Demo = lazy(() => import("@/pages/Demo"));
+
+function DemoPage() {
+  return (
+    <Suspense
+      fallback={
+        <p className="p-8 text-sm text-muted-foreground">Opening the sample…</p>
+      }
+    >
+      <Demo />
+    </Suspense>
+  );
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,7 +39,9 @@ const queryClient = new QueryClient({
       // A 401 is resolved by signing in again, not by retrying the request two
       // more times first.
       retry: (failureCount, error) =>
-        (error as { status?: number })?.status === 401 ? false : failureCount < 2,
+        (error as { status?: number })?.status === 401
+          ? false
+          : failureCount < 2,
     },
   },
 });
@@ -91,7 +110,11 @@ function Layout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   // Polling health while signed out is noise on a screen that shows nothing.
   const { isError: healthFailed } = useHealthCheck({
-    query: { enabled: !!user, queryKey: getHealthCheckQueryKey(), refetchInterval: 30_000 },
+    query: {
+      enabled: !!user,
+      queryKey: getHealthCheckQueryKey(),
+      refetchInterval: 30_000,
+    },
   });
   const offline = Boolean(user) && healthFailed;
 
@@ -120,6 +143,11 @@ function Layout({ children }: { children: React.ReactNode }) {
             {/* Available signed out too — someone reading the sign-in screen at
                 night should not have to authenticate to dim it. */}
             <ThemeToggle />
+            {!user && (
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/signin">Sign in</Link>
+              </Button>
+            )}
             <AccountMenu />
           </div>
         </div>
@@ -152,7 +180,16 @@ function Router() {
   if (!user) {
     return (
       <Layout>
-        <SignIn />
+        <Switch>
+          <Route path="/" component={Landing} />
+          <Route path="/demo" component={DemoPage} />
+          <Route path="/signup">
+            <SignIn key="register" initialMode="register" />
+          </Route>
+          <Route>
+            <SignIn key="login" />
+          </Route>
+        </Switch>
       </Layout>
     );
   }
@@ -161,12 +198,27 @@ function Router() {
     <Layout>
       <CommandPalette />
       <Switch>
+        <Route path="/demo" component={DemoPage} />
+        <Route path="/signin">
+          <Redirect to="/" />
+        </Route>
+        <Route path="/signup">
+          <Redirect to="/" />
+        </Route>
         <Route path="/" component={DocumentList} />
-        <Route path="/documents/:id">{(params) => (
-          <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Opening manuscript…</div>}>
-            <DocumentEditor key={params.id} />
-          </Suspense>
-        )}</Route>
+        <Route path="/documents/:id">
+          {(params) => (
+            <Suspense
+              fallback={
+                <div className="p-8 text-sm text-muted-foreground">
+                  Opening manuscript…
+                </div>
+              }
+            >
+              <DocumentEditor key={params.id} />
+            </Suspense>
+          )}
+        </Route>
         <Route component={NotFound} />
       </Switch>
     </Layout>
@@ -178,7 +230,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <TooltipProvider delayDuration={300}>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <AuthProvider>
               <Router />
             </AuthProvider>

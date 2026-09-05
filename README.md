@@ -6,7 +6,10 @@ Built with React, TipTap, Express, PostgreSQL, and a Python formatting engine.
 
 ## What you can do
 
+- Explore an interactive sample before signing up: edit its abstract and see a real word-limit check update.
+- Open a fictional sample in your private workspace to learn the editor, formatting review, and version recovery.
 - Keep manuscripts in your own account with session-based authentication.
+- Search manuscripts by title, filename, or style; filter by formatting status and confirm before deleting a draft.
 - Edit text, tables, equations, authors, affiliations, citations, and references.
 - Apply IEEE, APA, or ACM presets and document classes, or import your venue's guidelines.
 - Import BibTeX references and export editable DOCX equations.
@@ -40,7 +43,7 @@ npm run dev:api
 npm run dev:web
 ```
 
-Open **http://localhost:5173**, create an account, and upload a manuscript. API changes require restarting `dev:api`; frontend changes reload automatically.
+Open **http://localhost:5173** and try the public sample, or create an account and open a sample manuscript in your workspace. Upload your own draft when you're ready. API changes require restarting `dev:api`; frontend changes reload automatically.
 
 ## Docker
 
@@ -56,7 +59,7 @@ For an internet deployment, follow [the deployment guide](docs/DEPLOYMENT.md). U
 
 ## Verification
 
-For the browser checks, install Chromium once with `npx playwright install chromium`. Build before running browser tests. Browser tests use synthetic responses; PostgreSQL integration tests separately verify ownership, concurrent edits, and version recovery in CI.
+For the browser checks, install Chromium once with `npx playwright install chromium`. Build before running browser tests. Browser tests exercise the real public sample endpoint and use synthetic responses for authenticated workflows. PostgreSQL integration tests separately verify sample creation, ownership, concurrent edits, and version recovery in CI.
 
 ```sh
 npm test
