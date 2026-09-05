@@ -66,11 +66,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { SpecSheet } from "@/components/SpecSheet";
 import { AuthorPanel } from "@/components/AuthorPanel";
 import { ClassSuggestionBanner } from "@/components/ClassSuggestionBanner";
 import { ReferencePanel } from "@/components/ReferencePanel";
+import { FormatReview } from "@/components/FormatReview";
+import { VersionHistory } from "@/components/VersionHistory";
+import { SubmissionReport } from "@/components/SubmissionReport";
 import { IssueList } from "@/components/IssueList";
 import { PageMeter, PX_PER_INCH } from "@/components/PageMeter";
 import { Autosave } from "@/lib/autosave";
@@ -101,8 +108,15 @@ export default function DocumentEditor() {
   const [, params] = useRoute("/documents/:id");
   const documentId = parseInt(params?.id || "0", 10);
 
-  const { data: document, isLoading, error } = useGetDocument(documentId, {
-    query: { enabled: !!documentId, queryKey: getGetDocumentQueryKey(documentId) },
+  const {
+    data: document,
+    isLoading,
+    error,
+  } = useGetDocument(documentId, {
+    query: {
+      enabled: !!documentId,
+      queryKey: getGetDocumentQueryKey(documentId),
+    },
   });
 
   const { data: documentClasses } = useListDocumentClasses();
@@ -115,6 +129,11 @@ export default function DocumentEditor() {
   const [guidelines, setGuidelines] = useState("");
   const [applyingGuidelines, setApplyingGuidelines] = useState(false);
   const [formatting, setFormatting] = useState(false);
+  const [formatPreview, setFormatPreview] = useState<{
+    before: Document;
+    after: Document;
+    body: object;
+  } | null>(null);
   const [pageView, setPageView] = useState(true);
   const [zoom, setZoom] = useState(1);
   const [pageLimit, setPageLimit] = useState<number | null>(null);
@@ -129,7 +148,8 @@ export default function DocumentEditor() {
 
   // A limit read from the user's own guidelines beats the class preset: their
   // call for papers is more specific than any preset can be.
-  const effectiveBudget = document?.pageBudget ?? activeClass?.pageBudget ?? null;
+  const effectiveBudget =
+    document?.pageBudget ?? activeClass?.pageBudget ?? null;
 
   // Adopt that limit when it changes. Keyed on the value rather than run every
   // render, so a limit the user typed in by hand survives — until the venue's
@@ -155,21 +175,35 @@ export default function DocumentEditor() {
 
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [savedAt, setSavedAt] = useState<number | null>(null);
-  const autosave = useMemo(() => new Autosave<DocumentUpdate>(
-    async (patch) => {
-      await updateDocument(documentId, patch);
-      if (patch.title !== undefined) lastSavedTitle.current = patch.title;
-      if (patch.editorContent !== undefined) lastSavedContent.current = patch.editorContent;
-      queryClient.setQueryData(getGetDocumentQueryKey(documentId), (old: Document | undefined) =>
-        old ? { ...old, ...patch } : old,
-      );
-    },
-    (state) => {
-      setSaveState(state);
-      if (state === "saved") setSavedAt(Date.now());
-    },
-    AUTOSAVE_DELAY_MS,
-  ), [documentId, queryClient]);
+  const autosave = useMemo(
+    () =>
+      new Autosave<DocumentUpdate>(
+        async (patch) => {
+          const saved = await updateDocument(documentId, patch);
+          if (patch.title !== undefined) lastSavedTitle.current = patch.title;
+          if (patch.editorContent !== undefined)
+            lastSavedContent.current = patch.editorContent;
+          queryClient.setQueryData(
+            getGetDocumentQueryKey(documentId),
+            (old: Document | undefined) =>
+              old
+                ? {
+                    ...old,
+                    ...patch,
+                    revision: saved.revision,
+                    updatedAt: saved.updatedAt,
+                  }
+                : old,
+          );
+        },
+        (state) => {
+          setSaveState(state);
+          if (state === "saved") setSavedAt(Date.now());
+        },
+        AUTOSAVE_DELAY_MS,
+      ),
+    [documentId, queryClient],
+  );
   const saveContentNow = useCallback(() => {
     void autosave.flush().catch(() => {});
   }, [autosave]);
@@ -196,12 +230,15 @@ export default function DocumentEditor() {
       try {
         await autosave.flush();
         const id = documentIdRef.current;
-        const res = await fetch(apiUrl(`/api/documents/${id}/references/bibtex`), {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ bibtex }),
-        });
+        const res = await fetch(
+          apiUrl(`/api/documents/${id}/references/bibtex`),
+          {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ bibtex }),
+          },
+        );
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
           throw new Error(body.error || "Could not read that BibTeX.");
@@ -302,15 +339,26 @@ export default function DocumentEditor() {
         // Loading the server's copy is not a user edit — emitting an update
         // here would schedule an autosave that immediately writes the document
         // back to the server on every page load.
-        editor.commands.setContent(document.editorContent, { emitUpdate: false });
+        editor.commands.setContent(document.editorContent, {
+          emitUpdate: false,
+        });
       }
     }
   }, [document, editor, documentId]);
 
-  const applyUpdatedDoc = (updatedDoc: any) => {
+  useEffect(() => {
+    editor?.setEditable(!formatting && !formatPreview);
+  }, [editor, formatting, formatPreview]);
+
+  const applyUpdatedDoc = (updatedDoc: Document) => {
+    setTitle(updatedDoc.title);
+    setGuidelines(updatedDoc.guidelinesText ?? "");
+    setSelectedClass(updatedDoc.documentClass ?? "");
     queryClient.setQueryData(getGetDocumentQueryKey(documentId), updatedDoc);
     if (updatedDoc.editorContent && editor) {
-      editor.commands.setContent(updatedDoc.editorContent, { emitUpdate: false });
+      editor.commands.setContent(updatedDoc.editorContent, {
+        emitUpdate: false,
+      });
       lastSavedContent.current = updatedDoc.editorContent;
       setSaveState("saved");
       setSavedAt(Date.now());
@@ -319,8 +367,10 @@ export default function DocumentEditor() {
 
   // Format using whichever style the document has: an explicitly selected
   // preset wins; otherwise the guidelines-derived spec stored on the document.
-  const handleFormat = async () => {
-    const hasGuidelines = Boolean((document as GuidelinesFields | undefined)?.styleSpec);
+  const handleFormat = async (apply = false) => {
+    const hasGuidelines = Boolean(
+      (document as GuidelinesFields | undefined)?.styleSpec,
+    );
     if (!selectedClass && !hasGuidelines) {
       toast({
         title: "Nothing to format with",
@@ -334,18 +384,38 @@ export default function DocumentEditor() {
     editor?.setEditable(false);
     try {
       await autosave.flush();
-      const body = selectedClass ? { documentClass: selectedClass } : {};
+      const before = queryClient.getQueryData<Document>(
+        getGetDocumentQueryKey(documentId),
+      );
+      if (!before) throw new Error("Reload the manuscript before formatting.");
+      const body =
+        apply && formatPreview
+          ? formatPreview.body
+          : selectedClass
+            ? { documentClass: selectedClass }
+            : {};
       const res = await fetch(apiUrl(`/api/documents/${documentId}/format`), {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          ...body,
+          dryRun: !apply,
+          expectedRevision: apply
+            ? formatPreview?.after.revision
+            : before.revision,
+        }),
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
         throw new Error(e.error || "Formatting failed.");
       }
       const updated = await res.json();
+      if (!apply) {
+        setFormatPreview({ before, after: updated, body });
+        return;
+      }
+      setFormatPreview(null);
       applyUpdatedDoc(updated);
       toast({
         title: "Formatted",
@@ -361,7 +431,6 @@ export default function DocumentEditor() {
       });
     } finally {
       setFormatting(false);
-      editor?.setEditable(true);
     }
   };
 
@@ -376,12 +445,15 @@ export default function DocumentEditor() {
     }
     setApplyingGuidelines(true);
     try {
-      const res = await fetch(apiUrl(`/api/documents/${documentId}/guidelines`), {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ guidelines }),
-      });
+      const res = await fetch(
+        apiUrl(`/api/documents/${documentId}/guidelines`),
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ guidelines }),
+        },
+      );
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
         throw new Error(e.error || "Could not apply guidelines.");
@@ -411,11 +483,14 @@ export default function DocumentEditor() {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const res = await fetch(apiUrl(`/api/documents/${documentId}/guidelines/file`), {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
+      const res = await fetch(
+        apiUrl(`/api/documents/${documentId}/guidelines/file`),
+        {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        },
+      );
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
         throw new Error(e.error || "Could not read that guidelines file.");
@@ -443,14 +518,21 @@ export default function DocumentEditor() {
     try {
       await autosave.flush();
     } catch {
-      toast({ title: "Save failed", description: "Retry saving before running a check.", variant: "destructive" });
+      toast({
+        title: "Save failed",
+        description: "Retry saving before running a check.",
+        variant: "destructive",
+      });
       return;
     }
     analyzeDoc.mutate(
       { id: documentId },
       {
         onSuccess: (updatedDoc) => {
-          queryClient.setQueryData(getGetDocumentQueryKey(documentId), updatedDoc);
+          queryClient.setQueryData(
+            getGetDocumentQueryKey(documentId),
+            updatedDoc,
+          );
           const count = updatedDoc.formattingIssues.length;
           toast({
             title: "Check complete",
@@ -485,9 +567,12 @@ export default function DocumentEditor() {
     setExporting(true);
     try {
       await autosave.flush();
-      const response = await fetch(`${apiUrl(getExportDocumentUrl(documentId))}?format=${format}`, {
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${apiUrl(getExportDocumentUrl(documentId))}?format=${format}`,
+        {
+          credentials: "include",
+        },
+      );
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         throw new Error(body.error || "Export failed. Please try again.");
@@ -499,7 +584,12 @@ export default function DocumentEditor() {
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch (error) {
-      toast({ title: "Could not export", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" });
+      toast({
+        title: "Could not export",
+        description:
+          error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setExporting(false);
     }
@@ -618,6 +708,16 @@ export default function DocumentEditor() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
+      {formatPreview && (
+        <FormatReview
+          before={formatPreview.before}
+          after={formatPreview.after}
+          applying={formatting}
+          onClose={() => setFormatPreview(null)}
+          onApply={() => void handleFormat(true)}
+        />
+      )}
+
       {/* ---------------------------------------------------------------- */}
       {/* Manuscript                                                        */}
       {/* ---------------------------------------------------------------- */}
@@ -641,8 +741,11 @@ export default function DocumentEditor() {
 
           <Input
             value={title}
-            onChange={(e) => { setTitle(e.target.value); autosave.schedule({ title: e.target.value }); }}
-            disabled={formatting}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              autosave.schedule({ title: e.target.value });
+            }}
+            disabled={formatting || !!formatPreview}
             className="h-8 w-full max-w-md border-transparent bg-transparent px-2 text-sm font-medium shadow-none focus-visible:border-input"
             placeholder="Untitled manuscript"
             aria-label="Manuscript title"
@@ -655,9 +758,27 @@ export default function DocumentEditor() {
               onRetry={saveContentNow}
             />
 
+            <VersionHistory
+              documentId={documentId}
+              flush={async () => {
+                await autosave.flush();
+                const current = queryClient.getQueryData<Document>(
+                  getGetDocumentQueryKey(documentId),
+                );
+                if (!current)
+                  throw new Error("Reload the manuscript before restoring.");
+                return current.revision;
+              }}
+              onRestored={applyUpdatedDoc}
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8" disabled={exporting || formatting}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  disabled={exporting || formatting}
+                >
                   <Download className="mr-1.5 h-3.5 w-3.5" />
                   {exporting ? "Exporting?" : "Export"}
                 </Button>
@@ -678,7 +799,10 @@ export default function DocumentEditor() {
 
         <ScrollArea className="flex-1 bg-background">
           {pageView ? (
-            <div className="doc-stage" style={{ "--doc-zoom": zoom } as CSSProperties}>
+            <div
+              className="doc-stage"
+              style={{ "--doc-zoom": zoom } as CSSProperties}
+            >
               <div className="doc-frame">
                 <div className="doc-page" style={pageStyle}>
                   <div ref={setContentNode}>
@@ -723,7 +847,9 @@ export default function DocumentEditor() {
               budget={effectiveBudget}
             />
           ) : (
-            <span className="type-measure text-muted-foreground">Draft view</span>
+            <span className="type-measure text-muted-foreground">
+              Draft view
+            </span>
           )}
 
           <div className="ml-auto flex items-center gap-1">
@@ -757,7 +883,9 @@ export default function DocumentEditor() {
                   size="icon"
                   className="h-7 w-7 text-muted-foreground"
                   disabled={zoomIndex <= 0}
-                  onClick={() => setZoom(ZOOM_STEPS[Math.max(zoomIndex - 1, 0)])}
+                  onClick={() =>
+                    setZoom(ZOOM_STEPS[Math.max(zoomIndex - 1, 0)])
+                  }
                   aria-label="Zoom out"
                 >
                   <Minus className="h-3.5 w-3.5" />
@@ -771,7 +899,11 @@ export default function DocumentEditor() {
                   className="h-7 w-7 text-muted-foreground"
                   disabled={zoomIndex >= ZOOM_STEPS.length - 1}
                   onClick={() =>
-                    setZoom(ZOOM_STEPS[Math.min(zoomIndex + 1, ZOOM_STEPS.length - 1)])
+                    setZoom(
+                      ZOOM_STEPS[
+                        Math.min(zoomIndex + 1, ZOOM_STEPS.length - 1)
+                      ],
+                    )
                   }
                   aria-label="Zoom in"
                 >
@@ -792,7 +924,9 @@ export default function DocumentEditor() {
             <p className="type-eyebrow">Your guidelines</p>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
               Describe the required format in plain English, or as{" "}
-              <code className="font-mono text-[11px] text-foreground">key: value</code>{" "}
+              <code className="font-mono text-[11px] text-foreground">
+                key: value
+              </code>{" "}
               lines. Anything you leave out keeps its default.
             </p>
 
@@ -842,10 +976,7 @@ export default function DocumentEditor() {
             </div>
 
             <div className="mt-4 space-y-2">
-              <Label
-                htmlFor="style-select"
-                className="type-eyebrow block"
-              >
+              <Label htmlFor="style-select" className="type-eyebrow block">
                 Or a document class
               </Label>
 
@@ -867,11 +998,11 @@ export default function DocumentEditor() {
                     />
                   </div>
                 )}
-              <Select
-                value={selectedClass}
-                onValueChange={setSelectedClass}
-              >
-                <SelectTrigger id="style-select" className="h-8 w-full bg-background text-xs">
+              <Select value={selectedClass} onValueChange={setSelectedClass}>
+                <SelectTrigger
+                  id="style-select"
+                  className="h-8 w-full bg-background text-xs"
+                >
                   <SelectValue placeholder="None selected" />
                 </SelectTrigger>
                 <SelectContent>
@@ -888,14 +1019,14 @@ export default function DocumentEditor() {
               <Button
                 className="h-8"
                 disabled={formatting || (!selectedClass && !styleSpec)}
-                onClick={handleFormat}
+                onClick={() => void handleFormat()}
               >
                 {formatting ? (
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <Wand2 className="mr-1.5 h-3.5 w-3.5" />
                 )}
-                Format
+                Review format
               </Button>
               <Button
                 variant="secondary"
@@ -937,7 +1068,7 @@ export default function DocumentEditor() {
           </div>
 
           <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-            <p className="type-eyebrow">Compliance</p>
+            <p className="type-eyebrow">Manuscript review</p>
             {issues.length > 0 && (
               <span className="type-measure text-muted-foreground">
                 {issues.length}
@@ -945,6 +1076,11 @@ export default function DocumentEditor() {
             )}
           </div>
 
+          <SubmissionReport document={document} />
+          <p className="px-4 pt-3 text-xs text-muted-foreground">
+            Formatting notes below are from the last run. Review again after
+            editing.
+          </p>
           <IssueList issues={issues} editor={editor} />
         </ScrollArea>
       </aside>

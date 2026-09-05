@@ -22,9 +22,11 @@
     "test": "npm run test --workspaces --if-present",
     "test:python": "python -m pytest artifacts/api-server/python/tests -q",
     "migrate": "npm run migrate -w @workspace/db",
-    "test:smoke": "node scripts/smoke.mjs"
+    "test:smoke": "node scripts/smoke.mjs",
+    "test:browser": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "prettier": "^3.9.5",
     "typescript": "~5.9.3"
   },

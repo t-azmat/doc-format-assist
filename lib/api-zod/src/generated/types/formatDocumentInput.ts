@@ -12,6 +12,13 @@ import type { FormatDocumentInputDocumentClass } from './formatDocumentInputDocu
  * Optional. documentClass selects a class and is preferred; conferenceStyle is the older form and resolves to its family's default class. Either replaces a custom guidelines spec. Omitting both formats with whatever is already stored on the document.
  */
 export interface FormatDocumentInput {
+  /** Return a formatting preview without modifying the manuscript or creating a version. */
+  dryRun?: boolean;
+  /**
+     * Reject with 409 if the manuscript has changed since the preview.
+     * @minimum 0
+     */
+  expectedRevision?: number;
   conferenceStyle?: FormatDocumentInputConferenceStyle;
   documentClass?: FormatDocumentInputDocumentClass;
 }

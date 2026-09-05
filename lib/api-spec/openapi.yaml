@@ -503,6 +503,8 @@ paths:
             schema:
               $ref: "#/components/schemas/FormatDocumentInput"
       responses:
+        "409":
+          description: Manuscript changed while formatting or since the preview
         "200":
           description: Formatted document
           content:
@@ -521,6 +523,64 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /documents/{id}/versions:
+    get:
+      operationId: listDocumentVersions
+      tags: [documents]
+      summary: List the latest 50 saved versions of the caller's manuscript
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Saved versions, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DocumentVersion"
+        "404":
+          description: Manuscript not found or belongs to another account
+  /documents/{id}/versions/{versionId}/restore:
+    post:
+      operationId: restoreDocumentVersion
+      tags: [documents]
+      summary: Restore a saved version and save the current draft first
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: versionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RestoreVersionInput"
+      responses:
+        "200":
+          description: Restored manuscript
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "409":
+          description: Manuscript changed since the request was prepared
+        "404":
+          description: Manuscript or version not found
+        "422":
+          description: Missing or invalid revision
 
   /documents/{id}/export:
     get:
@@ -951,10 +1011,14 @@ components:
 
     Document:
       type: object
-      required: [id, title, authors, affiliations, references, status, conferenceStyle, editorContent, extractedContent, formattingIssues, createdAt, updatedAt]
+      required: [id, revision, title, authors, affiliations, references, status, conferenceStyle, editorContent, extractedContent, formattingIssues, createdAt, updatedAt]
       properties:
         id:
           type: integer
+        revision:
+          type: integer
+          minimum: 0
+          description: Increments with each manuscript change.
         title:
           type: string
         authors:
@@ -1045,6 +1109,25 @@ components:
           items:
             $ref: "#/components/schemas/Reference"
 
+    DocumentVersion:
+      type: object
+      required: [id, label, createdAt]
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    RestoreVersionInput:
+      type: object
+      required: [expectedRevision]
+      properties:
+        expectedRevision:
+          type: integer
+          minimum: 0
+
     FormatDocumentInput:
       type: object
       description: >-
@@ -1053,6 +1136,14 @@ components:
         replaces a custom guidelines spec. Omitting both formats with whatever is
         already stored on the document.
       properties:
+        dryRun:
+          type: boolean
+          default: false
+          description: Return a formatting preview without modifying the manuscript or creating a version.
+        expectedRevision:
+          type: integer
+          minimum: 0
+          description: Reject with 409 if the manuscript has changed since the preview.
         conferenceStyle:
           type: string
           enum: [ieee, apa, acm]

@@ -50,6 +50,8 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .ruff_cache/
+test-results/
+playwright-report/
 .agents/
 attached_assets/
 .publish/

@@ -199,6 +199,7 @@ export const documentsTable = pgTable(
   // the body as ids rather than as "[1]".
   references: jsonb("references").$type<Reference[]>().notNull().default([]),
   originalFilename: text("original_filename"),
+  revision: integer("revision").notNull().default(0),
   // Absolute path on disk to the originally uploaded source file (kept for re-export/re-analysis).
   sourceFilePath: text("source_file_path"),
   status: text("status", { enum: documentStatusValues })

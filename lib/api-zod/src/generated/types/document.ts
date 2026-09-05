@@ -18,6 +18,11 @@ import type { SuggestedClass } from './suggestedClass';
 
 export interface Document {
   id: number;
+  /**
+     * Increments with each manuscript change.
+     * @minimum 0
+     */
+  revision: number;
   title: string;
   authors: Author[];
   affiliations: Affiliation[];

@@ -34,6 +34,9 @@ jobs:
 
       - run: npm run test:smoke
 
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser
+
       # The generated client is committed, so a spec change that was not
       # followed by codegen would otherwise ship a client that disagrees with
       # the server.
@@ -95,6 +98,11 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/paper_formatter_test
         run: npm run migrate
+
+      - name: Verify version recovery and document ownership
+        env:
+          TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/paper_formatter_test
+        run: npm run test -w @workspace/api-server -- src/routes/versions.integration.test.ts
 
       # A schema change without a matching migration is the failure mode that
       # `drizzle-kit push` used to hide: generate again and expect no new file.

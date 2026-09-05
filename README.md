@@ -11,6 +11,8 @@ Built with React, TipTap, Express, PostgreSQL, and a Python formatting engine.
 - Apply IEEE, APA, or ACM presets and document classes, or import your venue's guidelines.
 - Import BibTeX references and export editable DOCX equations.
 - See formatting issues and an estimated page budget while editing.
+- Preview text and layout changes before applying formatting. The original draft is saved automatically and can be restored from Versions.
+- Review evidence-based checks for section headings, citation links, and supported explicit abstract word limits. Unverified checks are labelled **Not checked**.
 - Run optional AI compliance checks when the server has an OpenAI API key.
 
 Formatting is an aid to submission preparation. Venue requirements vary; review the exported file against the actual submission instructions. The editor's page estimate is approximate, and complex PDFs may require manual corrections after extraction.
@@ -54,9 +56,12 @@ For an internet deployment, follow [the deployment guide](docs/DEPLOYMENT.md). U
 
 ## Verification
 
+For the browser checks, install Chromium once with `npx playwright install chromium`. Build before running browser tests. Browser tests use synthetic responses; PostgreSQL integration tests separately verify ownership, concurrent edits, and version recovery in CI.
+
 ```sh
 npm test
 npm run build
+npm run test:browser
 uv run --locked python -m pytest artifacts/api-server/python/tests -q
 ```
 
@@ -79,7 +84,7 @@ Manuscripts are stored in PostgreSQL and the configured storage directory. Treat
 
 Core formatting works without an AI key. If enabled, AI compliance analysis sends manuscript text to OpenAI, and AI-assisted guideline parsing sends guideline text. Tell users before enabling these features for a shared deployment.
 
-The current architecture targets one application instance with bounded Python concurrency. It does not include password recovery, email verification, collaborative editing, per-account storage quotas, or a durable background job queue. Those are release requirements to evaluate before operating an unrestricted public service.
+The current architecture targets one application instance with bounded Python concurrency. It does not include password recovery, email verification, collaborative editing, per-account storage quotas, or a durable background job queue. Those are release requirements to evaluate before operating an unrestricted public service. Saved versions retain copies of manuscript content until the manuscript is deleted; include them in storage and retention planning.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development changes and [SECURITY.md](SECURITY.md) for reporting vulnerabilities.
 

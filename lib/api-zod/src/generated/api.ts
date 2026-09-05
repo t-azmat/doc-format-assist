@@ -164,8 +164,13 @@ export const ListDocumentsResponse = zod.array(ListDocumentsResponseItem)
  * Multipart form upload. Send the file under the "file" field. Not validated against a JSON schema server-side (handled by multer).
  * @summary Upload a document (PDF/DOCX) and extract its structured content
  */
+export const uploadDocumentResponseRevisionMin = 0;
+
+
+
 export const UploadDocumentResponse = zod.object({
   "id": zod.number().int(),
+  "revision": zod.number().int().min(uploadDocumentResponseRevisionMin).describe('Increments with each manuscript change.'),
   "title": zod.string(),
   "authors": zod.array(zod.object({
   "id": zod.string(),
@@ -265,8 +270,13 @@ export const GetDocumentParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+export const getDocumentResponseRevisionMin = 0;
+
+
+
 export const GetDocumentResponse = zod.object({
   "id": zod.number().int(),
+  "revision": zod.number().int().min(getDocumentResponseRevisionMin).describe('Increments with each manuscript change.'),
   "title": zod.string(),
   "authors": zod.array(zod.object({
   "id": zod.string(),
@@ -416,8 +426,13 @@ export const UpdateDocumentBody = zod.object({
 }).describe('A CSL-JSON bibliography item — the interchange format Zotero, Mendeley and pandoc all speak. Additional CSL fields are permitted and preserved; only `id` is required, because that is what a citation points at.')).optional().describe('Replaces the stored CSL-JSON reference library wholesale.')
 })
 
+export const updateDocumentResponseRevisionMin = 0;
+
+
+
 export const UpdateDocumentResponse = zod.object({
   "id": zod.number().int(),
+  "revision": zod.number().int().min(updateDocumentResponseRevisionMin).describe('Increments with each manuscript change.'),
   "title": zod.string(),
   "authors": zod.array(zod.object({
   "id": zod.string(),
@@ -536,8 +551,13 @@ export const SetDocumentGuidelinesBody = zod.object({
   "guidelines": zod.string().min(1).max(setDocumentGuidelinesBodyGuidelinesMax)
 })
 
+export const setDocumentGuidelinesResponseRevisionMin = 0;
+
+
+
 export const SetDocumentGuidelinesResponse = zod.object({
   "id": zod.number().int(),
+  "revision": zod.number().int().min(setDocumentGuidelinesResponseRevisionMin).describe('Increments with each manuscript change.'),
   "title": zod.string(),
   "authors": zod.array(zod.object({
   "id": zod.string(),
@@ -642,8 +662,13 @@ export const ImportDocumentBibtexBody = zod.object({
   "bibtex": zod.string().optional()
 })
 
+export const importDocumentBibtexResponseRevisionMin = 0;
+
+
+
 export const ImportDocumentBibtexResponse = zod.object({
   "id": zod.number().int(),
+  "revision": zod.number().int().min(importDocumentBibtexResponseRevisionMin).describe('Increments with each manuscript change.'),
   "title": zod.string(),
   "authors": zod.array(zod.object({
   "id": zod.string(),
@@ -744,8 +769,13 @@ export const UploadDocumentGuidelinesParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+export const uploadDocumentGuidelinesResponseRevisionMin = 0;
+
+
+
 export const UploadDocumentGuidelinesResponse = zod.object({
   "id": zod.number().int(),
+  "revision": zod.number().int().min(uploadDocumentGuidelinesResponseRevisionMin).describe('Increments with each manuscript change.'),
   "title": zod.string(),
   "authors": zod.array(zod.object({
   "id": zod.string(),
@@ -845,8 +875,13 @@ export const AnalyzeDocumentParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+export const analyzeDocumentResponseRevisionMin = 0;
+
+
+
 export const AnalyzeDocumentResponse = zod.object({
   "id": zod.number().int(),
+  "revision": zod.number().int().min(analyzeDocumentResponseRevisionMin).describe('Increments with each manuscript change.'),
   "title": zod.string(),
   "authors": zod.array(zod.object({
   "id": zod.string(),
@@ -946,13 +981,155 @@ export const FormatDocumentParams = zod.object({
   "id": zod.coerce.number().int()
 })
 
+export const formatDocumentBodyDryRunDefault = false;
+export const formatDocumentBodyExpectedRevisionMin = 0;
+
+
+
 export const FormatDocumentBody = zod.object({
+  "dryRun": zod.boolean().default(formatDocumentBodyDryRunDefault).describe('Return a formatting preview without modifying the manuscript or creating a version.'),
+  "expectedRevision": zod.number().int().min(formatDocumentBodyExpectedRevisionMin).optional().describe('Reject with 409 if the manuscript has changed since the preview.'),
   "conferenceStyle": zod.enum(['ieee', 'apa', 'acm']).optional(),
   "documentClass": zod.enum(['ieee-conference', 'ieee-journal', 'acm-conference', 'apa-journal', 'apa-dissertation']).optional()
 }).describe('Optional. documentClass selects a class and is preferred; conferenceStyle is the older form and resolves to its family\'s default class. Either replaces a custom guidelines spec. Omitting both formats with whatever is already stored on the document.')
 
+export const formatDocumentResponseRevisionMin = 0;
+
+
+
 export const FormatDocumentResponse = zod.object({
   "id": zod.number().int(),
+  "revision": zod.number().int().min(formatDocumentResponseRevisionMin).describe('Increments with each manuscript change.'),
+  "title": zod.string(),
+  "authors": zod.array(zod.object({
+  "id": zod.string(),
+  "given": zod.string(),
+  "family": zod.string(),
+  "literal": zod.string().nullish().describe('Overrides given\/family for names that do not decompose — mononyms, and organisations credited as an author.'),
+  "suffix": zod.string().nullish(),
+  "affiliationIds": zod.array(zod.string()).describe('References Affiliation.id. Order is significant.'),
+  "email": zod.string().nullish(),
+  "orcid": zod.string().nullish(),
+  "corresponding": zod.boolean(),
+  "equalContribution": zod.boolean()
+}).describe('Given and family names are stored separately and joined for display. The split exists for citation rendering, where the same person appears as \"Smith, J. A.\" — a full name cannot be reliably split after the fact.')),
+  "affiliations": zod.array(zod.object({
+  "id": zod.string().describe('Client-generated identifier, referenced by Author.affiliationIds'),
+  "organization": zod.string(),
+  "department": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "country": zod.string().nullish()
+})),
+  "references": zod.array(zod.object({
+  "id": zod.string(),
+  "type": zod.string().optional(),
+  "title": zod.string().optional(),
+  "author": zod.array(zod.object({
+  "family": zod.string().optional(),
+  "given": zod.string().optional(),
+  "literal": zod.string().optional()
+})).optional(),
+  "issued": zod.object({
+  "date-parts": zod.array(zod.array(zod.number().int())).optional(),
+  "literal": zod.string().optional()
+}).optional().describe('CSL date, e.g. {\"date-parts\": [[2020, 5]]}. Only the year is used.'),
+  "container-title": zod.string().optional(),
+  "publisher": zod.string().optional(),
+  "volume": zod.string().optional(),
+  "issue": zod.string().optional(),
+  "page": zod.string().optional(),
+  "edition": zod.string().optional(),
+  "DOI": zod.string().optional(),
+  "URL": zod.string().optional(),
+  "literal": zod.string().optional().describe('Verbatim source text for a reference that could not be parsed into fields.')
+}).describe('A CSL-JSON bibliography item — the interchange format Zotero, Mendeley and pandoc all speak. Additional CSL fields are permitted and preserved; only `id` is required, because that is what a citation points at.')),
+  "originalFilename": zod.string().nullish(),
+  "status": zod.enum(['extracted', 'formatted']),
+  "conferenceStyle": zod.union([zod.literal('ieee'),zod.literal('apa'),zod.literal('acm'),zod.literal(null)]).nullable(),
+  "documentClass": zod.union([zod.literal('ieee-conference'),zod.literal('ieee-journal'),zod.literal('acm-conference'),zod.literal('apa-journal'),zod.literal('apa-dissertation'),zod.literal(null)]).nullish().describe('Supersedes conferenceStyle. Absent on documents created before classes existed, which resolve to their family\'s default.'),
+  "pageBudget": zod.union([zod.object({
+  "maxPages": zod.number(),
+  "includesReferences": zod.boolean().describe('Whether the reference list counts against the limit. Calls for papers distinguish these and the difference is real work.')
+}),zod.null()]).optional().describe('A page limit read from the user\'s guidelines. Overrides the document class\'s own budget.'),
+  "suggestedClass": zod.union([zod.object({
+  "classId": zod.string(),
+  "confidence": zod.enum(['high', 'medium', 'low']),
+  "reasons": zod.array(zod.string())
+}).describe('What the manuscript looks like, inferred from its own shape at upload. A suggestion only — nothing applies it.'),zod.null()]).optional().describe('Inferred at upload from the manuscript\'s shape. Never applied automatically.'),
+  "guidelinesText": zod.string().nullish().describe('Raw formatting guidelines supplied by the user, if any'),
+  "styleSpec": zod.union([zod.object({
+  "id": zod.string().optional(),
+  "name": zod.string().optional(),
+  "description": zod.string().optional(),
+  "body_font": zod.string().optional(),
+  "heading_font": zod.string().optional(),
+  "body_size_pt": zod.number().optional(),
+  "heading_sizes_pt": zod.record(zod.string(), zod.number()).optional(),
+  "line_spacing": zod.number().optional(),
+  "margins_in": zod.object({
+  "top": zod.number().optional(),
+  "bottom": zod.number().optional(),
+  "left": zod.number().optional(),
+  "right": zod.number().optional()
+}).optional(),
+  "page_width_in": zod.number().optional().describe('Page width in inches (8.5 for US Letter, 8.27 for A4)'),
+  "page_height_in": zod.number().optional().describe('Page height in inches (11 for US Letter, 11.69 for A4)'),
+  "columns": zod.number().int().optional(),
+  "heading_case": zod.enum(['title', 'upper', 'sentence', 'none']).optional(),
+  "citation_style": zod.enum(['numeric', 'author-date']).optional(),
+  "required_sections": zod.array(zod.string()).optional()
+}).describe('Resolved formatting spec that drives both the compliance check and the DOCX\/PDF export. snake_case keys are intentional — the same JSON is handed to the Python engine unchanged.'),zod.null()]).optional().describe('The resolved style the editor renders and the exporter applies. Derived from guidelines when present, otherwise the source document\'s own design or a conference preset.'),
+  "editorContent": zod.unknown().describe('TipTap\/ProseMirror JSON document'),
+  "extractedContent": zod.unknown().describe('Raw structured extraction produced by the extraction engine (sections, references, images, tables)'),
+  "formattingIssues": zod.array(zod.object({
+  "id": zod.string(),
+  "severity": zod.enum(['error', 'warning', 'info']),
+  "message": zod.string(),
+  "location": zod.string().nullish()
+})),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List the latest 50 saved versions of the caller's manuscript
+ */
+export const ListDocumentVersionsParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+export const ListDocumentVersionsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "label": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+export const ListDocumentVersionsResponse = zod.array(ListDocumentVersionsResponseItem)
+
+
+/**
+ * @summary Restore a saved version and save the current draft first
+ */
+export const RestoreDocumentVersionParams = zod.object({
+  "id": zod.coerce.number().int(),
+  "versionId": zod.coerce.number().int()
+})
+
+export const restoreDocumentVersionBodyExpectedRevisionMin = 0;
+
+
+
+export const RestoreDocumentVersionBody = zod.object({
+  "expectedRevision": zod.number().int().min(restoreDocumentVersionBodyExpectedRevisionMin)
+})
+
+export const restoreDocumentVersionResponseRevisionMin = 0;
+
+
+
+export const RestoreDocumentVersionResponse = zod.object({
+  "id": zod.number().int(),
+  "revision": zod.number().int().min(restoreDocumentVersionResponseRevisionMin).describe('Increments with each manuscript change.'),
   "title": zod.string(),
   "authors": zod.array(zod.object({
   "id": zod.string(),

@@ -26,6 +26,7 @@ import type {
   DocumentClass,
   DocumentSummary,
   DocumentUpdate,
+  DocumentVersion,
   ErrorResponse,
   FormatDocumentInput,
   GuidelinesInput,
@@ -34,6 +35,7 @@ import type {
   LoginInput,
   ReadinessStatus,
   RegisterInput,
+  RestoreVersionInput,
   User
 } from './api.schemas';
 
@@ -1498,7 +1500,7 @@ return customFetch<Document>(getFormatDocumentUrl(id),
 
 export const getFormatDocumentMutationKey = () => ['formatDocument'] as const;
 
-export const getFormatDocumentMutationOptions = <TError = ErrorType<ErrorResponse>,
+export const getFormatDocumentMutationOptions = <TError = ErrorType<ErrorResponse | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof formatDocument>>, TError,FormatDocumentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof formatDocument>>, TError,FormatDocumentMutationVariables, TContext> => {
 
@@ -1527,13 +1529,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type FormatDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof formatDocument>>>
     export type FormatDocumentMutationBody = BodyType<FormatDocumentInput>
-    export type FormatDocumentMutationError = ErrorType<ErrorResponse>
+    export type FormatDocumentMutationError = ErrorType<ErrorResponse | void>
     export type FormatDocumentMutationVariables = {id: number;data: BodyType<FormatDocumentInput>}
 
     /**
  * @summary Reformat the document's content to match a conference style (layout, headings, spacing, references)
  */
-export const useFormatDocument = <TError = ErrorType<ErrorResponse>,
+export const useFormatDocument = <TError = ErrorType<ErrorResponse | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof formatDocument>>, TError,FormatDocumentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof formatDocument>>,
@@ -1542,6 +1544,166 @@ export const useFormatDocument = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getFormatDocumentMutationOptions(options));
+    }
+
+export const getListDocumentVersionsUrl = (id: number,) => {
+
+
+
+
+  return `/api/documents/${id}/versions`
+}
+
+/**
+ * @summary List the latest 50 saved versions of the caller's manuscript
+ */
+export const listDocumentVersions = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<DocumentVersion[]> => {
+
+  return customFetch<DocumentVersion[]>(getListDocumentVersionsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDocumentVersionsQueryKey = (id: number,) => {
+    return [
+    `/api/documents/${id}/versions`
+    ] as const;
+    }
+
+
+export const getListDocumentVersionsQueryOptions = <TData = Awaited<ReturnType<typeof listDocumentVersions>>, TError = ErrorType<void>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDocumentVersions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDocumentVersionsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDocumentVersions>>> = ({ signal }) => listDocumentVersions(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDocumentVersions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDocumentVersionsQueryResult = NonNullable<Awaited<ReturnType<typeof listDocumentVersions>>>
+export type ListDocumentVersionsQueryError = ErrorType<void>
+
+
+/**
+ * @summary List the latest 50 saved versions of the caller's manuscript
+ */
+
+export function useListDocumentVersions<TData = Awaited<ReturnType<typeof listDocumentVersions>>, TError = ErrorType<void>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDocumentVersions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDocumentVersionsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRestoreDocumentVersionUrl = (id: number,
+    versionId: number,) => {
+
+
+
+
+  return `/api/documents/${id}/versions/${versionId}/restore`
+}
+
+/**
+ * @summary Restore a saved version and save the current draft first
+ */
+export const restoreDocumentVersion = async (id: number,
+    versionId: number,
+    restoreVersionInput: RestoreVersionInput, options?: Parameters<typeof customFetch>[1]): Promise<Document> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Array.isArray(h)) return Object.fromEntries(h);
+    return h;
+  };
+return customFetch<Document>(getRestoreDocumentVersionUrl(id,versionId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(restoreVersionInput)
+  }
+);}
+
+
+
+
+
+export const getRestoreDocumentVersionMutationKey = () => ['restoreDocumentVersion'] as const;
+
+export const getRestoreDocumentVersionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreDocumentVersion>>, TError,RestoreDocumentVersionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreDocumentVersion>>, TError,RestoreDocumentVersionMutationVariables, TContext> => {
+
+const mutationKey = getRestoreDocumentVersionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreDocumentVersion>>, RestoreDocumentVersionMutationVariables> = (props) => {
+          const {id,versionId,data} = props ?? {};
+
+          return  restoreDocumentVersion(id,versionId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreDocumentVersionMutationResult = NonNullable<Awaited<ReturnType<typeof restoreDocumentVersion>>>
+    export type RestoreDocumentVersionMutationBody = BodyType<RestoreVersionInput>
+    export type RestoreDocumentVersionMutationError = ErrorType<void>
+    export type RestoreDocumentVersionMutationVariables = {id: number;versionId: number;data: BodyType<RestoreVersionInput>}
+
+    /**
+ * @summary Restore a saved version and save the current draft first
+ */
+export const useRestoreDocumentVersion = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreDocumentVersion>>, TError,RestoreDocumentVersionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof restoreDocumentVersion>>,
+        TError,
+        RestoreDocumentVersionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRestoreDocumentVersionMutationOptions(options));
     }
 
 export const getExportDocumentUrl = (id: number,) => {

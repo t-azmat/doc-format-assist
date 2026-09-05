@@ -3,10 +3,12 @@ import fs from "fs";
 import path from "path";
 import { Router, type IRouter } from "express";
 import multer from "multer";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import {
   db,
   documentsTable,
+  documentVersionsTable,
+  documentSnapshot,
   documentClassValues,
   type DocumentClassId,
   type FormattingIssue,
@@ -184,7 +186,11 @@ const guidelinesUpload = multer({
     if ([...GUIDELINES_TEXT_EXTS, ...GUIDELINES_DOC_EXTS].includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error("Guidelines must be a .txt, .md, .yaml, .pdf, or .docx file."));
+      cb(
+        new Error(
+          "Guidelines must be a .txt, .md, .yaml, .pdf, or .docx file.",
+        ),
+      );
     }
   },
 });
@@ -193,7 +199,8 @@ const bibtexUpload = multer({
   dest: UPLOADS_DIR,
   limits: { fileSize: 1024 * 1024, files: 1, fields: 1 },
   fileFilter: (_req, file, cb) => {
-    if (path.extname(file.originalname).toLowerCase() === ".bib") cb(null, true);
+    if (path.extname(file.originalname).toLowerCase() === ".bib")
+      cb(null, true);
     else cb(new Error("BibTeX must be a .bib file."));
   },
 });
@@ -201,6 +208,7 @@ const bibtexUpload = multer({
 function toDocumentResponse(row: typeof documentsTable.$inferSelect) {
   return {
     id: row.id,
+    revision: row.revision,
     title: row.title,
     authors: row.authors ?? [],
     affiliations: row.affiliations ?? [],
@@ -225,11 +233,22 @@ function toDocumentResponse(row: typeof documentsTable.$inferSelect) {
   };
 }
 
-function toDocumentSummary(row: Pick<typeof documentsTable.$inferSelect,
-  "id" | "title" | "originalFilename" | "status" | "conferenceStyle" |
-  "documentClass" | "guidelinesText" | "styleSpec" | "formattingIssues" |
-  "createdAt" | "updatedAt"
->) {
+function toDocumentSummary(
+  row: Pick<
+    typeof documentsTable.$inferSelect,
+    | "id"
+    | "title"
+    | "originalFilename"
+    | "status"
+    | "conferenceStyle"
+    | "documentClass"
+    | "guidelinesText"
+    | "styleSpec"
+    | "formattingIssues"
+    | "createdAt"
+    | "updatedAt"
+  >,
+) {
   return {
     id: row.id,
     title: row.title,
@@ -306,47 +325,57 @@ router.get("/documents", async (req, res, next) => {
   }
 });
 
-router.post("/documents/upload", heavyRateLimit, upload.single("file"), async (req, res, next) => {
-  const file = req.file;
-  if (!file) {
-    res.status(422).json(errorResponse("No file was uploaded."));
-    return;
-  }
+router.post(
+  "/documents/upload",
+  heavyRateLimit,
+  upload.single("file"),
+  async (req, res, next) => {
+    const file = req.file;
+    if (!file) {
+      res.status(422).json(errorResponse("No file was uploaded."));
+      return;
+    }
 
-  try {
-    const { editorContent, extractedContent } = await extractDocument(file.path);
-    const title = path.basename(file.originalname, path.extname(file.originalname));
+    try {
+      const { editorContent, extractedContent } = await extractDocument(
+        file.path,
+      );
+      const title = path.basename(
+        file.originalname,
+        path.extname(file.originalname),
+      );
 
-    // Preserve the source's actual design (page size, margins, columns, base
-    // typography) so the editor renders the real layout and export defaults to
-    // it — until the user applies guidelines or a preset.
-    const initialSpec =
-      (extractedContent as { design?: Partial<StyleSpec> })?.design ?? null;
+      // Preserve the source's actual design (page size, margins, columns, base
+      // typography) so the editor renders the real layout and export defaults to
+      // it — until the user applies guidelines or a preset.
+      const initialSpec =
+        (extractedContent as { design?: Partial<StyleSpec> })?.design ?? null;
 
-    const [row] = await db
-      .insert(documentsTable)
-      .values({
-        ownerId: currentUserId(req),
-        title,
-        originalFilename: file.originalname,
-        sourceFilePath: file.path,
-        status: "extracted",
-        conferenceStyle: null,
-        styleSpec: initialSpec,
-        editorContent,
-        extractedContent,
-        formattingIssues: [],
-      })
-      .returning();
+      const [row] = await db
+        .insert(documentsTable)
+        .values({
+          ownerId: currentUserId(req),
+          title,
+          originalFilename: file.originalname,
+          sourceFilePath: file.path,
+          status: "extracted",
+          conferenceStyle: null,
+          styleSpec: initialSpec,
+          editorContent,
+          extractedContent,
+          formattingIssues: [],
+        })
+        .returning();
 
-    req.log.info({ documentId: row.id }, "Document extracted");
-    res.status(201).json(toDocumentResponse(row));
-  } catch (err) {
-    fs.rm(file.path, { force: true }, () => {});
-    if (respondToEngineError(err, req, res, "Extraction")) return;
-    next(err);
-  }
-});
+      req.log.info({ documentId: row.id }, "Document extracted");
+      res.status(201).json(toDocumentResponse(row));
+    } catch (err) {
+      fs.rm(file.path, { force: true }, () => {});
+      if (respondToEngineError(err, req, res, "Extraction")) return;
+      next(err);
+    }
+  },
+);
 
 router.get("/documents/:id", async (req, res, next) => {
   try {
@@ -370,6 +399,7 @@ router.patch("/documents/:id", async (req, res, next) => {
     const [updated] = await db
       .update(documentsTable)
       .set({
+        revision: sql`${documentsTable.revision} + 1`,
         ...(body.title !== undefined ? { title: body.title } : {}),
         ...(body.editorContent !== undefined
           ? { editorContent: body.editorContent }
@@ -380,7 +410,9 @@ router.patch("/documents/:id", async (req, res, next) => {
         ...(body.affiliations !== undefined
           ? { affiliations: body.affiliations }
           : {}),
-        ...(body.references !== undefined ? { references: body.references } : {}),
+        ...(body.references !== undefined
+          ? { references: body.references }
+          : {}),
       })
       .where(ownedDocument(id, ownerId))
       .returning();
@@ -399,7 +431,8 @@ router.delete("/documents/:id", async (req, res, next) => {
     if (!row) return;
 
     await db.delete(documentsTable).where(ownedDocument(id, ownerId));
-    if (row.sourceFilePath) fs.rm(row.sourceFilePath, { force: true }, () => {});
+    if (row.sourceFilePath)
+      fs.rm(row.sourceFilePath, { force: true }, () => {});
     res.status(204).end();
   } catch (err) {
     next(err);
@@ -416,7 +449,11 @@ router.post("/documents/:id/analyze", aiRateLimit, async (req, res, next) => {
     if (!row.conferenceStyle) {
       res
         .status(422)
-        .json(errorResponse("Select a conference style before running an analysis."));
+        .json(
+          errorResponse(
+            "Select a conference style before running an analysis.",
+          ),
+        );
       return;
     }
 
@@ -439,7 +476,10 @@ router.post("/documents/:id/analyze", aiRateLimit, async (req, res, next) => {
 
     const [updated] = await db
       .update(documentsTable)
-      .set({ formattingIssues: issues })
+      .set({
+        formattingIssues: issues,
+        revision: sql`${documentsTable.revision} + 1`,
+      })
       .where(ownedDocument(id, ownerId))
       .returning();
 
@@ -467,6 +507,7 @@ async function applyGuidelines(
   const [updated] = await db
     .update(documentsTable)
     .set({
+      revision: sql`${documentsTable.revision} + 1`,
       guidelinesText,
       styleSpec: spec,
       conferenceStyle: null,
@@ -498,13 +539,22 @@ router.post("/documents/:id/guidelines", async (req, res, next) => {
     if (guidelines.length > MAX_GUIDELINES_CHARS) {
       res
         .status(422)
-        .json(errorResponse("Guidelines text is too long (200,000 character limit)."));
+        .json(
+          errorResponse(
+            "Guidelines text is too long (200,000 character limit).",
+          ),
+        );
       return;
     }
     const row = await findDocumentOrRespond404(id, ownerId, res);
     if (!row) return;
 
-    const updated = await applyGuidelines(id, ownerId, guidelines, row.documentClass);
+    const updated = await applyGuidelines(
+      id,
+      ownerId,
+      guidelines,
+      row.documentClass,
+    );
     res.json(toDocumentResponse(updated));
   } catch (err) {
     next(err);
@@ -536,14 +586,18 @@ router.post(
       }
 
       if (source.length > MAX_GUIDELINES_CHARS) {
-        res.status(422).json(errorResponse("BibTeX is too long (200,000 character limit)."));
+        res
+          .status(422)
+          .json(errorResponse("BibTeX is too long (200,000 character limit)."));
         return;
       }
       const imported = await importBibtex(source);
       if (imported.length === 0) {
         res
           .status(422)
-          .json(errorResponse("No BibTeX entries could be read from that input."));
+          .json(
+            errorResponse("No BibTeX entries could be read from that input."),
+          );
         return;
       }
 
@@ -557,11 +611,17 @@ router.post(
 
       const [updated] = await db
         .update(documentsTable)
-        .set({ references: [...merged.values()] })
+        .set({
+          references: [...merged.values()],
+          revision: sql`${documentsTable.revision} + 1`,
+        })
         .where(ownedDocument(id, ownerId))
         .returning();
 
-      req.log.info({ documentId: id, imported: imported.length }, "BibTeX imported");
+      req.log.info(
+        { documentId: id, imported: imported.length },
+        "BibTeX imported",
+      );
       res.json(toDocumentResponse(updated));
     } catch (err) {
       if (respondToEngineError(err, req, res, "BibTeX import")) return;
@@ -602,7 +662,9 @@ router.post(
       if (!text.trim()) {
         res
           .status(422)
-          .json(errorResponse("Could not read any guidelines text from that file."));
+          .json(
+            errorResponse("Could not read any guidelines text from that file."),
+          );
         return;
       }
 
@@ -628,13 +690,48 @@ router.post("/documents/:id/format", heavyRateLimit, async (req, res, next) => {
     const ownerId = currentUserId(req);
     const row = await findDocumentOrRespond404(id, ownerId, res);
     if (!row) return;
+    if (
+      req.body?.dryRun !== undefined &&
+      typeof req.body.dryRun !== "boolean"
+    ) {
+      res.status(422).json(errorResponse("dryRun must be a boolean."));
+      return;
+    }
+    if (
+      req.body?.expectedRevision !== undefined &&
+      (!Number.isInteger(req.body.expectedRevision) ||
+        req.body.expectedRevision < 0)
+    ) {
+      res
+        .status(422)
+        .json(
+          errorResponse("expectedRevision must be a non-negative integer."),
+        );
+      return;
+    }
+    if (
+      req.body?.expectedRevision !== undefined &&
+      req.body.expectedRevision !== row.revision
+    ) {
+      res
+        .status(409)
+        .json(
+          errorResponse(
+            "The manuscript changed. Close the preview and review the latest version before applying formatting.",
+          ),
+        );
+      return;
+    }
 
     // A class or preset in the body explicitly selects one (and supersedes any
     // custom guidelines spec); otherwise format with the document's stored
     // style — the class/guidelines spec if present, else its existing preset.
     // Reject an unknown class here rather than letting the engine fail on it:
     // a bad id is a client error, not an engine error.
-    if (req.body?.documentClass !== undefined && !asDocumentClass(req.body.documentClass)) {
+    if (
+      req.body?.documentClass !== undefined &&
+      !asDocumentClass(req.body.documentClass)
+    ) {
       res.status(422).json(errorResponse("Unknown document class."));
       return;
     }
@@ -669,32 +766,158 @@ router.post("/documents/:id/format", heavyRateLimit, async (req, res, next) => {
       row.references,
     );
 
-    const [updated] = await db
-      .update(documentsTable)
-      .set({
-        editorContent: result.editorContent,
-        ...(bodyStyle ? { conferenceStyle: bodyStyle } : {}),
-        // The engine reports the class it actually resolved, including when a
-        // legacy conferenceStyle was mapped to its family's default — so a
-        // document formatted once stops being ambiguous.
-        ...(asDocumentClass(result.documentClass)
-          ? { documentClass: asDocumentClass(result.documentClass) }
-          : {}),
-        // Persist the concrete spec the engine applied so the editor renders in
-        // this exact format.
-        styleSpec: result.styleSpec ?? row.styleSpec,
-        status: "formatted",
-        formattingIssues: result.formattingIssues,
-      })
-      .where(ownedDocument(id, ownerId))
-      .returning();
-
+    const changes = {
+      editorContent: result.editorContent,
+      ...(bodyStyle ? { conferenceStyle: bodyStyle } : {}),
+      ...(asDocumentClass(result.documentClass)
+        ? { documentClass: asDocumentClass(result.documentClass) }
+        : {}),
+      styleSpec: result.styleSpec ?? row.styleSpec,
+      status: "formatted" as const,
+      formattingIssues: result.formattingIssues,
+    };
+    if (req.body?.dryRun === true) {
+      res.json(toDocumentResponse({ ...row, ...changes }));
+      return;
+    }
+    const updated = await db.transaction(async (tx) => {
+      const [saved] = await tx
+        .update(documentsTable)
+        .set({ ...changes, revision: sql`${documentsTable.revision} + 1` })
+        .where(
+          and(
+            ownedDocument(id, ownerId),
+            eq(documentsTable.revision, row.revision),
+          ),
+        )
+        .returning();
+      if (!saved) return null;
+      await tx.insert(documentVersionsTable).values({
+        documentId: id,
+        label: "Before formatting",
+        snapshot: documentSnapshot(row),
+      });
+      return saved;
+    });
+    if (!updated) {
+      res
+        .status(409)
+        .json(
+          errorResponse(
+            "The manuscript changed while formatting. Review it again before applying.",
+          ),
+        );
+      return;
+    }
     res.json(toDocumentResponse(updated));
   } catch (err) {
     if (respondToEngineError(err, req, res, "Formatting")) return;
     next(err);
   }
 });
+
+router.get("/documents/:id/versions", async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!(await findDocumentOrRespond404(id, currentUserId(req), res))) return;
+    const versions = await db
+      .select({
+        id: documentVersionsTable.id,
+        label: documentVersionsTable.label,
+        createdAt: documentVersionsTable.createdAt,
+      })
+      .from(documentVersionsTable)
+      .innerJoin(
+        documentsTable,
+        eq(documentsTable.id, documentVersionsTable.documentId),
+      )
+      .where(ownedDocument(id, currentUserId(req)))
+      .orderBy(desc(documentVersionsTable.id))
+      .limit(50);
+    res.json(versions);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post(
+  "/documents/:id/versions/:versionId/restore",
+  async (req, res, next) => {
+    try {
+      const id = Number(req.params.id);
+      const ownerId = currentUserId(req);
+      const row = await findDocumentOrRespond404(id, ownerId, res);
+      if (!row) return;
+      const versionId = Number(req.params.versionId);
+      if (!Number.isSafeInteger(versionId) || versionId < 1) {
+        res.status(404).json(errorResponse("Version not found."));
+        return;
+      }
+      if (
+        !Number.isInteger(req.body?.expectedRevision) ||
+        req.body.expectedRevision < 0
+      ) {
+        res
+          .status(422)
+          .json(errorResponse("Provide the current document revision."));
+        return;
+      }
+      const [version] = await db
+        .select({ snapshot: documentVersionsTable.snapshot })
+        .from(documentVersionsTable)
+        .innerJoin(
+          documentsTable,
+          eq(documentsTable.id, documentVersionsTable.documentId),
+        )
+        .where(
+          and(
+            ownedDocument(id, ownerId),
+            eq(documentVersionsTable.id, versionId),
+          ),
+        );
+      if (!version) {
+        res.status(404).json(errorResponse("Version not found."));
+        return;
+      }
+      const restored = await db.transaction(async (tx) => {
+        const [saved] = await tx
+          .update(documentsTable)
+          .set({
+            ...version.snapshot,
+            revision: sql`${documentsTable.revision} + 1`,
+          })
+          .where(
+            and(
+              ownedDocument(id, ownerId),
+              eq(documentsTable.revision, row.revision),
+              eq(documentsTable.revision, req.body.expectedRevision),
+            ),
+          )
+          .returning();
+        if (!saved) return null;
+        await tx.insert(documentVersionsTable).values({
+          documentId: id,
+          label: "Before restoring a version",
+          snapshot: documentSnapshot(row),
+        });
+        return saved;
+      });
+      if (!restored) {
+        res
+          .status(409)
+          .json(
+            errorResponse(
+              "The manuscript changed. Reload it before restoring a version.",
+            ),
+          );
+        return;
+      }
+      res.json(toDocumentResponse(restored));
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 router.get("/documents/:id/export", heavyRateLimit, async (req, res, next) => {
   const temporaryFiles: string[] = [];
@@ -740,12 +963,16 @@ router.get("/documents/:id/export", heavyRateLimit, async (req, res, next) => {
     });
 
     const outputPath = pdfPath ?? docxPath;
-    res.download(outputPath, safeDownloadName(row.title, requestedFormat), (err) => {
-      // The rendered files are throwaway: remove them once the response is on
-      // the wire so the exports directory does not grow without bound.
-      cleanup();
-      if (err) next(err);
-    });
+    res.download(
+      outputPath,
+      safeDownloadName(row.title, requestedFormat),
+      (err) => {
+        // The rendered files are throwaway: remove them once the response is on
+        // the wire so the exports directory does not grow without bound.
+        cleanup();
+        if (err) next(err);
+      },
+    );
   } catch (err) {
     cleanup();
     if (respondToEngineError(err, req, res, "Export")) return;

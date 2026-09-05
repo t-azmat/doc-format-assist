@@ -17,6 +17,8 @@ The Docker image installs Python dependencies declared in `pyproject.toml`; this
 
 ## Release checks
 
+The review-and-restore release adds migration `0005`: a document revision counter and a `document_versions` table. Apply migrations before starting the new server (`npm run migrate`, or the Compose migration service). Versions are retained until their manuscript is deleted and are included in database backups.
+
 - Require green GitHub Actions checks before merging.
 - Validate the container on the actual host: register, sign in, upload a synthetic DOCX and PDF, edit, refresh, format, and download DOCX/PDF.
 - Confirm a second account cannot access the first account's documents.
