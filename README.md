@@ -72,9 +72,13 @@ uv run --locked python -m pytest artifacts/api-server/python/tests -q
 
 ## Project structure
 
+The editor prototype is available at `/editor-lab` without an account. Switch templates while typing to try automatic typography; its temporary content is not saved. The real manuscript editor uses the same independent packages under `packages/editor-core` and `packages/editor-react`. See [the editor package guide](packages/editor-react/README.md) for embedding and current limitations.
+
 | Path | Purpose |
 | --- | --- |
 | `artifacts/paper-formatter` | React interface and TipTap editor |
+| `packages/editor-core` | Independent typography model and generated template presets |
+| `packages/editor-react` | Reusable React manuscript editor and automatic style canvas |
 | `artifacts/api-server/src` | Express API, authentication, document ownership |
 | `artifacts/api-server/python` | Extraction, formatting, and DOCX/PDF rendering |
 | `lib/db` | PostgreSQL schema and versioned migrations |

@@ -17,7 +17,7 @@ export function SubmissionReport({
   mode = "saved",
 }: {
   document: Document;
-  mode?: "saved" | "sample";
+  mode?: "saved" | "sample" | "live";
 }) {
   const checks = submissionChecks(document);
   return (
@@ -29,7 +29,9 @@ export function SubmissionReport({
       <p className="mt-1 text-xs text-muted-foreground">
         {mode === "sample"
           ? "Updates as you edit the sample. Nothing is saved."
-          : "Based on your saved draft. Expand a check to see its evidence and limits."}
+          : mode === "live"
+            ? "Updates while you write. The save indicator shows whether your edits are saved."
+            : "Based on your saved draft. Expand a check to see its evidence and limits."}
       </p>
       <div className="mt-3 divide-y divide-border">
         {checks.map((check) => (
@@ -42,10 +44,12 @@ export function SubmissionReport({
             </summary>
             <p className="mt-2 text-xs leading-relaxed">{check.detail}</p>
             <p className="mt-2 whitespace-pre-wrap break-words text-xs text-muted-foreground">
-              {mode === "sample"
+              {mode !== "saved"
                 ? check.source.replaceAll(
                     "Saved manuscript",
-                    "Sample manuscript",
+                    mode === "sample"
+                      ? "Sample manuscript"
+                      : "Current manuscript",
                   )
                 : check.source}
             </p>

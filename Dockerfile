@@ -13,6 +13,8 @@ WORKDIR /app
 # Copy every workspace manifest before the sources so `npm ci` is cached until
 # a dependency actually changes.
 COPY package.json package-lock.json ./
+COPY packages/editor-core/package.json ./packages/editor-core/
+COPY packages/editor-react/package.json ./packages/editor-react/
 COPY artifacts/api-server/package.json ./artifacts/api-server/
 COPY artifacts/mockup-sandbox/package.json ./artifacts/mockup-sandbox/
 COPY artifacts/paper-formatter/package.json ./artifacts/paper-formatter/

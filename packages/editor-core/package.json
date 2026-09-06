@@ -1,0 +1,12 @@
+{
+  "name": "@editorial-desk/editor-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Independent manuscript style model and template resolution",
+  "license": "MIT",
+  "type": "module",
+  "files": ["dist", "README.md", "LICENSE"],
+  "exports": { ".": { "workspace": "./src/index.ts", "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "scripts": { "build": "tsc -b", "typecheck": "tsc -b", "test": "vitest run" },
+  "devDependencies": { "typescript": "~5.9.3", "vitest": "^4.1.10" }
+}

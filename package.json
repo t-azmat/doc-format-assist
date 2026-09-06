@@ -4,6 +4,8 @@
   "license": "MIT",
   "private": true,
   "workspaces": [
+    "packages/editor-core",
+    "packages/editor-react",
     "artifacts/api-server",
     "artifacts/mockup-sandbox",
     "artifacts/paper-formatter",
@@ -14,6 +16,7 @@
     "scripts"
   ],
   "scripts": {
+    "generate:editor-templates": "python scripts/generate_editor_templates.py",
     "dev:api": "npm run dev -w @workspace/api-server",
     "dev:web": "npm run dev -w @workspace/paper-formatter",
     "build": "npm run typecheck && npm run build --workspaces --if-present",

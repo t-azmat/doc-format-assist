@@ -20,6 +20,15 @@ import { Button } from "@/components/ui/button";
 
 const DocumentEditor = lazy(() => import("@/pages/DocumentEditor"));
 const Demo = lazy(() => import("@/pages/Demo"));
+const EditorLab = lazy(() => import("@/pages/EditorLab"));
+
+function EditorLabPage() {
+  return (
+    <Suspense fallback={<p className="p-8">Opening editor…</p>}>
+      <EditorLab />
+    </Suspense>
+  );
+}
 
 function DemoPage() {
   return (
@@ -183,6 +192,7 @@ function Router() {
         <Switch>
           <Route path="/" component={Landing} />
           <Route path="/demo" component={DemoPage} />
+          <Route path="/editor-lab" component={EditorLabPage} />
           <Route path="/signup">
             <SignIn key="register" initialMode="register" />
           </Route>
@@ -199,6 +209,7 @@ function Router() {
       <CommandPalette />
       <Switch>
         <Route path="/demo" component={DemoPage} />
+        <Route path="/editor-lab" component={EditorLabPage} />
         <Route path="/signin">
           <Redirect to="/" />
         </Route>

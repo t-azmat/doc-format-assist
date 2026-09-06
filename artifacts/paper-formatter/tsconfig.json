@@ -15,6 +15,7 @@
     }
   },
   "references": [
+    { "path": "../../packages/editor-react" },
     {
       "path": "../../lib/api-client-react"
     }

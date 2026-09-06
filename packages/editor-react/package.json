@@ -1,0 +1,29 @@
+{
+  "name": "@editorial-desk/editor-react",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Embeddable React manuscript editor with automatic template styling",
+  "license": "MIT",
+  "type": "module",
+  "files": ["dist", "styles.css", "README.md", "LICENSE"],
+  "sideEffects": ["**/*.css"],
+  "exports": {
+    ".": { "workspace": "./src/index.tsx", "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./styles.css": "./styles.css"
+  },
+  "scripts": { "build": "tsc -b", "typecheck": "tsc -b" },
+  "dependencies": {
+    "@editorial-desk/editor-core": "^0.1.0",
+    "@tiptap/core": "^3.27.4",
+    "@tiptap/react": "^3.27.4",
+    "@tiptap/starter-kit": "^3.27.4",
+    "@tiptap/extension-typography": "^3.27.4",
+    "@tiptap/extension-image": "^3.27.4",
+    "@tiptap/extension-table": "^3.27.4",
+    "@tiptap/extension-table-row": "^3.27.4",
+    "@tiptap/extension-table-header": "^3.27.4",
+    "@tiptap/extension-table-cell": "^3.27.4"
+  },
+  "peerDependencies": { "react": "^19.0.0", "react-dom": "^19.0.0" },
+  "devDependencies": { "typescript": "~5.9.3", "@types/react": "^19.2.0", "@types/react-dom": "^19.2.0" }
+}

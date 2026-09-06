@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "composite": true, "declaration": true, "jsx": "react-jsx", "lib": ["es2022", "dom", "dom.iterable"], "outDir": "dist", "rootDir": "src" },
+  "include": ["src"],
+  "references": [{ "path": "../editor-core" }]
+}

@@ -67,6 +67,7 @@ jobs:
       - run: pip install python-docx latex2mathml pytest
 
       - run: python -m pytest artifacts/api-server/python/tests -q
+      - run: python scripts/generate_editor_templates.py --check
 
   migrations:
     name: Migrations apply cleanly

@@ -180,6 +180,18 @@ test("workspace search, deletion confirmation, and private sample entry work tog
   await expect(
     page.getByRole("button", { name: "Got it", exact: true }),
   ).toBeVisible();
+  const abstractCheck = page
+    .locator("summary")
+    .filter({ hasText: "Abstract word limit" });
+  await expect(abstractCheck).toContainText("Failed");
+  await page
+    .locator(".tiptap > p")
+    .first()
+    .fill("A short fictional abstract for testing live checks.");
+  await expect(abstractCheck).toContainText("Passed");
+  await expect(
+    page.getByRole("region", { name: "Submission checks" }),
+  ).toContainText("Updates while you write");
   expect(creations).toBe(1);
   expect(errors).toEqual([]);
 });

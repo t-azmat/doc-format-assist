@@ -7,16 +7,12 @@ import {
   type CSSProperties,
 } from "react";
 import { useRoute, Link } from "wouter";
-import { useEditor, EditorContent } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Typography from "@tiptap/extension-typography";
-import Image from "@tiptap/extension-image";
-import { Table } from "@tiptap/extension-table";
-import TableRow from "@tiptap/extension-table-row";
-import TableHeader from "@tiptap/extension-table-header";
-import TableCell from "@tiptap/extension-table-cell";
-import { MathBlock, MathInline } from "@/lib/mathNodes";
-import { Citation } from "@/lib/citationNode";
+import {
+  useManuscriptEditor,
+  ManuscriptCanvas,
+  resolveManuscriptStyle,
+} from "@editorial-desk/editor-react";
+import "@editorial-desk/editor-react/styles.css";
 import { EditorToolbar } from "@/components/EditorToolbar";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -125,6 +121,7 @@ export default function DocumentEditor() {
   const { toast } = useToast();
 
   const [title, setTitle] = useState("");
+  const [liveContent, setLiveContent] = useState<unknown>(null);
   const [sampleGuideDismissed, setSampleGuideDismissed] = useState(false);
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [guidelines, setGuidelines] = useState("");
@@ -282,38 +279,10 @@ export default function DocumentEditor() {
     };
   }, [autosave]);
 
-  const editor = useEditor({
-    // Create after React commits the lazy page. A suspended first render can
-    // otherwise retain an instance that TipTap has already destroyed.
-    immediatelyRender: false,
-    extensions: [
-      StarterKit,
-      Typography,
-      Image,
-      Table.configure({ resizable: true }),
-      TableRow,
-      TableHeader,
-      TableCell,
-      // Registered so extracted equations survive a load/save cycle — an
-      // unknown node type is dropped by the schema, and autosave would then
-      // write the loss back to the server.
-      MathInline,
-      MathBlock,
-      Citation,
-    ],
-    content: "",
+  const editor = useManuscriptEditor({
+    onChange: scheduleContentSave,
     editorProps: {
-      attributes: {
-        // No `dark:prose-invert`. The manuscript sheet is white paper in both
-        // themes, so inverting prose in dark mode set --tw-prose-bold to white
-        // and every bold run — the abstract, index terms — turned white on
-        // white and disappeared. The two surfaces set their own prose colors in
-        // index.css instead: .doc-page always paper, .doc-plain theme-aware.
-        class: "prose prose-stone max-w-none focus:outline-none",
-      },
-    },
-    onUpdate: ({ editor }) => {
-      scheduleContentSave(editor.getJSON());
+      attributes: { class: "prose prose-stone max-w-none focus:outline-none" },
     },
   });
 
@@ -354,7 +323,28 @@ export default function DocumentEditor() {
     editor?.setEditable(!formatting && !formatPreview);
   }, [editor, formatting, formatPreview]);
 
+  // Refresh checks after a short typing pause, independent of network saves.
+  useEffect(() => {
+    if (!editor) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const update = ({
+      transaction,
+    }: {
+      transaction: { docChanged: boolean };
+    }) => {
+      if (!transaction.docChanged) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => setLiveContent(editor.getJSON()), 400);
+    };
+    editor.on("transaction", update);
+    return () => {
+      clearTimeout(timer);
+      editor.off("transaction", update);
+    };
+  }, [editor]);
+
   const applyUpdatedDoc = (updatedDoc: Document) => {
+    setLiveContent(updatedDoc.editorContent);
     setTitle(updatedDoc.title);
     setGuidelines(updatedDoc.guidelinesText ?? "");
     setSelectedClass(updatedDoc.documentClass ?? "");
@@ -602,23 +592,27 @@ export default function DocumentEditor() {
   const styleSpec: StyleSpec | null =
     (document as GuidelinesFields | undefined)?.styleSpec ?? null;
 
-  // Effective values for the page preview — the document's resolved spec, with
-  // sensible fallbacks for anything not yet set.
-  const eff = useMemo(() => {
-    const margins = styleSpec?.margins_in ?? {};
-    return {
-      font: styleSpec?.body_font ?? "Times New Roman",
-      size: styleSpec?.body_size_pt ?? 12,
-      line: styleSpec?.line_spacing ?? 1.5,
-      cols: styleSpec?.columns ?? 1,
-      widthIn: styleSpec?.page_width_in ?? 8.5,
-      heightIn: styleSpec?.page_height_in ?? 11,
-      top: margins.top ?? 1,
-      right: margins.right ?? 1,
-      bottom: margins.bottom ?? 1,
-      left: margins.left ?? 1,
-    };
-  }, [styleSpec]);
+  const liveStyle = useMemo(
+    () =>
+      resolveManuscriptStyle({
+        styleSpec,
+        documentClass: document?.documentClass,
+        conferenceStyle: document?.conferenceStyle,
+      }),
+    [styleSpec, document?.documentClass, document?.conferenceStyle],
+  );
+  const eff = useMemo(
+    () => ({
+      font: liveStyle.body_font,
+      size: liveStyle.body_size_pt,
+      line: liveStyle.line_spacing,
+      cols: liveStyle.columns,
+      widthIn: liveStyle.page_width_in,
+      heightIn: liveStyle.page_height_in,
+      ...liveStyle.margins_in,
+    }),
+    [liveStyle],
+  );
 
   // Printable height of one sheet, in CSS pixels — drives both the page count
   // and where the break markers land.
@@ -659,7 +653,7 @@ export default function DocumentEditor() {
     Math.ceil(contentHeight / printableHeightPx) - 1,
   );
 
-  const hsz = styleSpec?.heading_sizes_pt ?? {};
+  const hsz = liveStyle.heading_sizes_pt;
   const pageStyle = {
     "--doc-w": `${eff.widthIn}in`,
     "--doc-h": `${eff.heightIn}in`,
@@ -823,6 +817,13 @@ export default function DocumentEditor() {
               </Button>
             </div>
           )}
+        <div
+          className="border-b border-border px-4 py-2 text-xs text-muted-foreground"
+          role="status"
+        >
+          Live typography: {liveStyle.name}. New text inherits this style. Page
+          breaks remain estimates.
+        </div>
         <EditorToolbar editor={editor} />
 
         <ScrollArea className="flex-1 bg-background">
@@ -834,7 +835,11 @@ export default function DocumentEditor() {
               <div className="doc-frame">
                 <div className="doc-page" style={pageStyle}>
                   <div ref={setContentNode}>
-                    <EditorContent editor={editor} />
+                    <ManuscriptCanvas
+                      editor={editor}
+                      styleSpec={liveStyle}
+                      layout="columns"
+                    />
                   </div>
 
                   {/* Where the paper actually runs out. The sheet is one
@@ -859,7 +864,7 @@ export default function DocumentEditor() {
           ) : (
             <div className="flex justify-center px-6 py-10">
               <div className="doc-plain">
-                <EditorContent editor={editor} />
+                <ManuscriptCanvas editor={editor} styleSpec={liveStyle} />
               </div>
             </div>
           )}
@@ -1104,7 +1109,13 @@ export default function DocumentEditor() {
             )}
           </div>
 
-          <SubmissionReport document={document} />
+          <SubmissionReport
+            document={{
+              ...document,
+              editorContent: liveContent ?? document.editorContent,
+            }}
+            mode="live"
+          />
           <p className="px-4 pt-3 text-xs text-muted-foreground">
             Formatting notes below are from the last run. Review again after
             editing.

@@ -3,6 +3,8 @@
   "compileOnSave": false,
   "files": [],
   "references": [
+    { "path": "./packages/editor-core" },
+    { "path": "./packages/editor-react" },
     {
       "path": "./lib/db"
     },

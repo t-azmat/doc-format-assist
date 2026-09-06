@@ -24,6 +24,7 @@ export default defineConfig({
     tailwindcss(),
   ],
   resolve: {
+    conditions: ['workspace', 'browser', 'module', 'development|production'],
     alias: {
       '@': path.resolve(import.meta.dirname, 'src'),
       '@assets': path.resolve(
