@@ -8,5 +8,5 @@
   "files": ["dist", "README.md", "LICENSE"],
   "exports": { ".": { "workspace": "./src/index.ts", "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
   "scripts": { "build": "tsc -b", "typecheck": "tsc -b", "test": "vitest run" },
-  "devDependencies": { "typescript": "~5.9.3", "vitest": "^4.1.10" }
+  "devDependencies": { "typescript": "~5.9.3", "vitest": "^4.1.11" }
 }
