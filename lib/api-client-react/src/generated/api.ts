@@ -1866,7 +1866,7 @@ export const getExportDocumentUrl = (id: number,) => {
 }
 
 /**
- * Accepts an optional `?format=docx|pdf` query parameter (default docx). It is documented here rather than declared as a parameter because orval would then emit an `ExportDocumentParams` symbol in both the zod and the types output, which collide under this package's `export *` index. PDF conversion requires LibreOffice on the server.
+ * Accepts an optional `?format=docx|pdf` query parameter (default docx). It is documented here rather than declared as a parameter because orval would then emit an `ExportDocumentParams` symbol in both the zod and the types output, which collide under this package's `export *` index. PDF conversion requires LibreOffice on the server. An optional expectedRevision query value rejects stale snapshots with 409. Successful exports include X-Document-Revision identifying the rendered snapshot.
  * @summary Export the formatted document as a downloadable file
  */
 export const exportDocument = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {

@@ -11,6 +11,8 @@ import io
 import json
 import subprocess
 import sys
+import tempfile
+import os
 from pathlib import Path
 
 from docx import Document
@@ -1033,20 +1035,25 @@ def main() -> None:
     if pdf_output_path is not None:
         pdf_output_path.parent.mkdir(parents=True, exist_ok=True)
         try:
-            result = subprocess.run(
-                [
-                    "soffice",
-                    "--headless",
-                    "--convert-to",
-                    "pdf",
-                    "--outdir",
-                    str(pdf_output_path.parent),
-                    str(docx_output_path),
-                ],
-                capture_output=True,
-                text=True,
-                timeout=PDF_TIMEOUT_SEC,
-            )
+            # Isolated profiles prevent another conversion or a desktop instance
+            # from absorbing this request and omitting its output.
+            with tempfile.TemporaryDirectory(prefix="editorial-desk-lo-") as profile:
+                result = subprocess.run(
+                    [
+                        "soffice",
+                        f"-env:UserInstallation={Path(profile).as_uri()}",
+                        "--headless",
+                        "--convert-to",
+                        "pdf",
+                        "--outdir",
+                        str(pdf_output_path.parent),
+                        str(docx_output_path),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=PDF_TIMEOUT_SEC,
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                )
         except FileNotFoundError:
             print(
                 json.dumps(

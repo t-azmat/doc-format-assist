@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   useManuscriptEditor,
   ManuscriptCanvas,
+  EquationControl,
   manuscriptTemplates,
   resolveManuscriptStyle,
   type JSONContent,
@@ -29,7 +30,7 @@ const initial: JSONContent = {
       content: [{ type: "text", text: "Method and notation" }],
     },
     paragraph(
-      "Equations and citation IDs remain structured parts of the document. This prototype displays equation source; mathematical typesetting is a later step.",
+      "Equations and citation IDs remain structured parts of the document. Select an equation and choose Equation to edit its LaTeX source, or insert a new one at the cursor.",
     ),
     { type: "mathBlock", attrs: { latex: "E = mc^2" } },
     {
@@ -121,6 +122,7 @@ export default function EditorLab() {
         aria-label="Manuscript tools"
         className="flex flex-wrap gap-2 rounded-t-lg border border-border bg-card p-3"
       >
+        <EquationControl editor={editor} />
         {[
           ["Paragraph", () => editor?.chain().focus().setParagraph().run()],
           [

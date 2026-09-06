@@ -11,10 +11,11 @@ import request from "supertest";
 import { eq, inArray } from "drizzle-orm";
 import type { Express } from "express";
 
-const engine = vi.hoisted(() => ({ format: vi.fn() }));
+const engine = vi.hoisted(() => ({ format: vi.fn(), export: vi.fn() }));
 vi.mock("../lib/pythonClient", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../lib/pythonClient")>()),
   formatDocument: engine.format,
+  exportDocument: engine.export,
 }));
 
 // Runs only against the explicitly provisioned CI test database.
@@ -153,6 +154,36 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
       expect(saved.body.editorContent).toEqual(originalContent);
       expect(saved.body.revision).toBe(0);
       expect((await versions(doc.id)).body).toEqual([]);
+    });
+
+    it("labels export snapshots and rejects stale revisions before rendering", async () => {
+      const doc = await seed();
+      const { writeFile } = await import("node:fs/promises");
+      engine.export.mockReset().mockImplementation(async ({ pdfPath }) => {
+        await writeFile(pdfPath, "%PDF-1.4\nsynthetic snapshot");
+      });
+      const stale = await request(app)
+        .get(`/api/documents/${doc.id}/export?format=pdf&expectedRevision=1`)
+        .set("Cookie", aliceCookie);
+      expect(stale.status).toBe(409);
+      expect(engine.export).not.toHaveBeenCalled();
+      const invalid = await request(app)
+        .get(`/api/documents/${doc.id}/export?format=pdf&expectedRevision=-1`)
+        .set("Cookie", aliceCookie);
+      expect(invalid.status).toBe(422);
+      const forbidden = await request(app)
+        .get(`/api/documents/${doc.id}/export?format=pdf&expectedRevision=0`)
+        .set("Cookie", bobCookie);
+      expect(forbidden.status).toBe(404);
+      const exported = await request(app)
+        .get(`/api/documents/${doc.id}/export?format=pdf&expectedRevision=0`)
+        .set("Cookie", aliceCookie);
+      expect(exported.status).toBe(200);
+      expect(exported.headers["x-document-revision"]).toBe("0");
+      expect(engine.export).toHaveBeenCalledOnce();
+      expect(engine.export.mock.calls[0][0].editorContent).toEqual(
+        originalContent,
+      );
     });
 
     it("saves the original and makes restoration itself reversible", async () => {

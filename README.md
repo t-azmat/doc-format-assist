@@ -11,10 +11,12 @@ Built with React, TipTap, Express, PostgreSQL, and a Python formatting engine.
 - Keep manuscripts in your own account with session-based authentication.
 - Search manuscripts by title, filename, or style; filter by formatting status and confirm before deleting a draft.
 - Edit text, tables, equations, authors, affiliations, citations, and references.
+- Insert or edit rendered equations from LaTeX while preserving their source for editable Word export.
 - Apply IEEE, APA, or ACM presets and document classes, or import your venue's guidelines.
 - Import BibTeX references and export editable DOCX equations.
 - See formatting issues and an estimated page budget while editing.
 - Preview text and layout changes before applying formatting. The original draft is saved automatically and can be restored from Versions.
+- Use **Export → Preview exported PDF** to inspect actual pages, navigate and zoom, then download the exact file shown. The preview saves pending edits first and identifies the rendered draft revision.
 - Review evidence-based checks for section headings, citation links, and supported explicit abstract word limits. Unverified checks are labelled **Not checked**.
 - Run optional AI compliance checks when the server has an OpenAI API key.
 

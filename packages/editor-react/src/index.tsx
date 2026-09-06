@@ -22,6 +22,7 @@ import { MathInline, MathBlock } from "./mathNodes.js";
 import { Citation } from "./citationNode.js";
 
 export { MathInline, MathBlock, Citation };
+export { EquationControl } from "./EquationControl.js";
 // Keep extension command augmentations available to TypeScript consumers.
 export { StarterKit, Image, Table, TableRow, TableHeader, TableCell };
 export type { Editor, JSONContent };

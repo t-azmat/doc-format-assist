@@ -52,7 +52,8 @@ app.use(
       directives: {
         "img-src": ["'self'", "data:", "blob:"],
         "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        "font-src": ["'self'", "https://fonts.gstatic.com"],
+        "font-src": ["'self'", "blob:", "data:", "https://fonts.gstatic.com"],
+        "worker-src": ["'self'"],
         "upgrade-insecure-requests": process.env.NODE_ENV === "production" ? [] : null,
       },
     },

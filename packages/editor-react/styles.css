@@ -1,3 +1,5 @@
+@import "katex/dist/katex.min.css";
+
 .ed-canvas .tiptap.ProseMirror {
   font-family: var(--ed-font, "Times New Roman"), serif;
   font-size: var(--ed-size, 12pt);
@@ -104,4 +106,83 @@
   border-inline-start: 3px solid #aaa;
   margin-inline: 0;
   padding-inline-start: 1em;
+}
+
+.ed-equation-button {
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.ed-equation-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ed-equation-dialog {
+  width: min(92vw, 36rem);
+  max-height: 85vh;
+  overflow: auto;
+  margin: auto;
+  border: 1px solid #bbb;
+  border-radius: 8px;
+  padding: 1.5rem;
+  background: white;
+  color: #171717;
+  font:
+    14px system-ui,
+    sans-serif;
+}
+.ed-equation-dialog::backdrop {
+  background: #0008;
+}
+.ed-equation-dialog h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0 0 1rem;
+}
+.ed-equation-dialog textarea {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 6rem;
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  margin: 0.5rem 0 1rem;
+  padding: 0.75rem;
+  font: 14px monospace;
+  background: white;
+  color: black;
+}
+.ed-equation-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.ed-equation-preview {
+  overflow: auto;
+  padding: 1rem 0;
+}
+.ed-equation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.ed-equation-actions button {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #999;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.ed-equation-actions button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ed-equation-dialog [role="alert"] {
+  color: #a02020;
+}
+.ed-canvas .tiptap.ProseMirror .math-block {
+  overflow-x: auto;
 }

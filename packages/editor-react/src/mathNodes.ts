@@ -1,4 +1,42 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import katex from "katex";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+
+function equationView(node: ProseMirrorNode, displayMode: boolean) {
+  const dom = document.createElement(displayMode ? "div" : "span");
+  dom.className = displayMode ? "math-block" : "math-inline";
+  dom.contentEditable = "false";
+  const paint = (current: ProseMirrorNode) => {
+    const source = String(current.attrs.latex ?? "");
+    dom.dataset.latex = source;
+    dom.setAttribute("aria-label", `Equation: ${source}`);
+    dom.title = "Select this equation, then choose Equation to edit it.";
+    if (source.length > 10000) {
+      dom.textContent =
+        "Equation source is too long to display. Its source is preserved.";
+      return;
+    }
+    katex.render(source, dom, {
+      displayMode,
+      throwOnError: false,
+      trust: false,
+      maxExpand: 500,
+      maxSize: 20,
+      strict: "ignore",
+    });
+  };
+  paint(node);
+  return {
+    dom,
+    update(next: ProseMirrorNode) {
+      if (next.type !== node.type) return false;
+      if (next.attrs.latex !== node.attrs.latex) paint(next);
+      node = next;
+      return true;
+    },
+    ignoreMutation: () => true,
+  };
+}
 
 /**
  * Math nodes for the editor schema.
@@ -13,10 +51,8 @@ import { Node, mergeAttributes } from "@tiptap/core";
  * LaTeX is stored bare in the `latex` attribute — no delimiters — matching what
  * `richconvert.py` emits and what `export.py` converts to OMML.
  *
- * Rendering is deliberately plain text in a monospace box rather than typeset
- * output. Typesetting needs KaTeX, which is a dependency this workspace does
- * not have; the export path does not depend on it, so it can be added later
- * without touching the document format.
+ * KaTeX renders only the node view. Serialization retains bare LaTeX so the
+ * export pipeline can generate editable Word equations from the same source.
  */
 
 export interface MathAttributes {
@@ -26,7 +62,8 @@ export interface MathAttributes {
 const latexAttribute = {
   latex: {
     default: "",
-    parseHTML: (element: HTMLElement) => element.getAttribute("data-latex") ?? "",
+    parseHTML: (element: HTMLElement) =>
+      element.getAttribute("data-latex") ?? "",
     renderHTML: (attributes: Record<string, unknown>) => ({
       "data-latex": String(attributes.latex ?? ""),
     }),
@@ -41,6 +78,9 @@ export const MathInline = Node.create({
   // `atom` the caret walks into it and the LaTeX can be corrupted piecemeal.
   atom: true,
   selectable: true,
+  addNodeView() {
+    return ({ node }) => equationView(node, false);
+  },
 
   addAttributes() {
     return latexAttribute;
@@ -65,6 +105,9 @@ export const MathBlock = Node.create({
   atom: true,
   selectable: true,
   draggable: true,
+  addNodeView() {
+    return ({ node }) => equationView(node, true);
+  },
 
   addAttributes() {
     return latexAttribute;

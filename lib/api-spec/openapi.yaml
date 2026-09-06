@@ -621,6 +621,8 @@ paths:
         would then emit an `ExportDocumentParams` symbol in both the zod and
         the types output, which collide under this package's `export *` index.
         PDF conversion requires LibreOffice on the server.
+        An optional expectedRevision query value rejects stale snapshots with 409.
+        Successful exports include X-Document-Revision identifying the rendered snapshot.
       parameters:
         - name: id
           in: path

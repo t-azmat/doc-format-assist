@@ -5,6 +5,8 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  lazy,
+  Suspense,
 } from "react";
 import { useRoute, Link } from "wouter";
 import {
@@ -94,6 +96,7 @@ const LEGACY_CLASS_FOR_STYLE: Record<string, string> = {
 const GUIDELINES_ACCEPT = ".txt,.md,.markdown,.yaml,.yml,.pdf,.docx,.doc";
 const AUTOSAVE_DELAY_MS = 1000;
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5] as const;
+const ExportPreview = lazy(() => import("@/components/ExportPreview"));
 
 // Mirror the app's existing fetch convention (see DocumentList upload/export):
 // prefix the base path, API paths already start with "/api".
@@ -557,6 +560,7 @@ export default function DocumentEditor() {
   };
 
   const [exporting, setExporting] = useState(false);
+  const [exportPreviewOpen, setExportPreviewOpen] = useState(false);
   const handleExport = async (format: "docx" | "pdf") => {
     setExporting(true);
     try {
@@ -706,6 +710,31 @@ export default function DocumentEditor() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
+      {exportPreviewOpen && (
+        <Suspense
+          fallback={
+            <p className="p-4" role="status">
+              Opening export preview...
+            </p>
+          }
+        >
+          <ExportPreview
+            documentId={documentId}
+            currentRevision={document.revision}
+            dirty={saveState !== "saved"}
+            onClose={() => setExportPreviewOpen(false)}
+            prepare={async () => {
+              await autosave.flush();
+              const current = queryClient.getQueryData<Document>(
+                getGetDocumentQueryKey(documentId),
+              );
+              if (!current)
+                throw new Error("Reload the manuscript before previewing.");
+              return { revision: current.revision, title: current.title };
+            }}
+          />
+        </Suspense>
+      )}
       {formatPreview && (
         <FormatReview
           before={formatPreview.before}
@@ -782,6 +811,9 @@ export default function DocumentEditor() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setExportPreviewOpen(true)}>
+                  Preview exported PDF
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleExport("docx")}>
                   Word document (.docx)
                 </DropdownMenuItem>

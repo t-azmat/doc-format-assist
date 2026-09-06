@@ -1,5 +1,6 @@
 import { useRef, type ReactNode } from "react";
 import type { Editor } from "@tiptap/react";
+import { EquationControl } from "@editorial-desk/editor-react";
 import {
   Bold,
   Italic,
@@ -19,7 +20,11 @@ import {
 } from "lucide-react";
 import { Toggle } from "@/components/ui/toggle";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface EditorToolbarProps {
   editor: Editor | null;
@@ -28,7 +33,8 @@ interface EditorToolbarProps {
 // Mac reports "MacIntel"/"Mac" in userAgent; showing ⌘ to a Windows user (or
 // Ctrl to a Mac user) makes every hint in the toolbar subtly wrong.
 const IS_MAC =
-  typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+  typeof navigator !== "undefined" &&
+  /Mac|iPhone|iPad/.test(navigator.platform);
 const MOD = IS_MAC ? "⌘" : "Ctrl";
 
 /** Icon control with its keyboard shortcut in the tooltip. */
@@ -219,7 +225,9 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
             size="sm"
             className={toggleClass}
             pressed={editor.isActive("bulletList")}
-            onPressedChange={() => editor.chain().focus().toggleBulletList().run()}
+            onPressedChange={() =>
+              editor.chain().focus().toggleBulletList().run()
+            }
             aria-label="Bulleted list"
           >
             <List className="h-3.5 w-3.5" />
@@ -230,7 +238,9 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
             size="sm"
             className={toggleClass}
             pressed={editor.isActive("orderedList")}
-            onPressedChange={() => editor.chain().focus().toggleOrderedList().run()}
+            onPressedChange={() =>
+              editor.chain().focus().toggleOrderedList().run()
+            }
             aria-label="Numbered list"
           >
             <ListOrdered className="h-3.5 w-3.5" />
@@ -241,7 +251,9 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
             size="sm"
             className={toggleClass}
             pressed={editor.isActive("blockquote")}
-            onPressedChange={() => editor.chain().focus().toggleBlockquote().run()}
+            onPressedChange={() =>
+              editor.chain().focus().toggleBlockquote().run()
+            }
             aria-label="Block quotation"
           >
             <Quote className="h-3.5 w-3.5" />
@@ -250,6 +262,7 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
       </Group>
 
       <Group>
+        <EquationControl editor={editor} />
         <Hint label="Insert table">
           <Button
             variant="ghost"

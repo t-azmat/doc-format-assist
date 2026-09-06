@@ -14,6 +14,7 @@ test("independent editor restyles typing without rewriting content or losing ric
   await expect(editor).toContainText("A manuscript that follows your style");
   await expect(editor).toHaveCSS("font-size", "16px");
   await expect(editor).toHaveCSS("line-height", "32px");
+  await expect(editor.locator(".math-block .katex")).toBeVisible();
   await page.getByText("Inspect document JSON", { exact: true }).click();
   const json = page.getByTestId("editor-json");
   const original = await json.textContent();
@@ -65,4 +66,30 @@ test("independent editor restyles typing without rewriting content or losing ric
   ).toBe(true);
   expect(errors).toEqual([]);
   expect(requests).toEqual([]);
+});
+
+test("equations can be edited and undone without losing LaTeX", async ({
+  page,
+}) => {
+  await page.goto("/editor-lab");
+  const math = page.locator(".tiptap .math-block");
+  await expect(math.locator(".katex")).toBeVisible();
+  await math.click();
+  await page.getByRole("button", { name: "Equation", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText("Edit equation");
+  await page.getByLabel("LaTeX source").fill("\\frac{a}{b}");
+  await page.getByRole("button", { name: "Update equation" }).click();
+  await expect(math).toHaveAttribute("data-latex", "\\frac{a}{b}");
+  await expect(math.locator(".katex")).toBeVisible();
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(math).toHaveAttribute("data-latex", "E = mc^2");
+  await math.click();
+  await page.getByRole("button", { name: "Equation", exact: true }).click();
+  await page.getByLabel("LaTeX source").fill("\\frac{");
+  await expect(page.getByRole("dialog").getByRole("alert")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Update equation" }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(math).toHaveAttribute("data-latex", "E = mc^2");
 });

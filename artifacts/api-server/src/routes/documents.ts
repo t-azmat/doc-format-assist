@@ -960,6 +960,32 @@ router.get("/documents/:id/export", heavyRateLimit, async (req, res, next) => {
     const row = await findDocumentOrRespond404(id, currentUserId(req), res);
     if (!row) return;
 
+    const expected = req.query.expectedRevision;
+    if (expected !== undefined) {
+      if (
+        typeof expected !== "string" ||
+        !/^\d+$/.test(expected) ||
+        !Number.isSafeInteger(Number(expected))
+      ) {
+        res
+          .status(422)
+          .json(
+            errorResponse("expectedRevision must be a non-negative integer."),
+          );
+        return;
+      }
+      if (Number(expected) !== row.revision) {
+        res
+          .status(409)
+          .json(
+            errorResponse(
+              "The manuscript changed before export. Refresh it and try again.",
+            ),
+          );
+        return;
+      }
+    }
+
     const selector = styleSelectorFor(row);
     if (!selector) {
       res
@@ -994,6 +1020,8 @@ router.get("/documents/:id/export", heavyRateLimit, async (req, res, next) => {
     });
 
     const outputPath = pdfPath ?? docxPath;
+    // Rendering uses the row snapshot above, even if another edit finishes meanwhile.
+    res.setHeader("X-Document-Revision", String(row.revision));
     res.download(
       outputPath,
       safeDownloadName(row.title, requestedFormat),
