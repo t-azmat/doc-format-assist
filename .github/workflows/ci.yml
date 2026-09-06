@@ -64,7 +64,10 @@ jobs:
       # The engine tests exercise styles/format/export only. Docling is a very
       # large dependency (it pulls a torch stack) and nothing under test
       # imports it, so installing python-docx alone keeps CI to a sane runtime.
-      - run: pip install python-docx latex2mathml pytest
+      - run: pip install python-docx latex2mathml pytest uv
+
+      - name: Verify Python lockfile matches project dependencies
+        run: uv lock --check
 
       - run: python -m pytest artifacts/api-server/python/tests -q
       - run: python scripts/generate_editor_templates.py --check

@@ -34,6 +34,16 @@ Copy `.env.example` to `.env` and set `DATABASE_URL` to your local PostgreSQL da
 
 Install the locked Python environment with `uv sync --locked`. The API automatically finds the repository's `.venv`. If you use another Python environment, set `PYTHON_BIN` to its interpreter.
 
+On Windows, select standalone Python explicitly so LibreOffice's bundled interpreter is not used:
+
+```powershell
+py -3.12 -m pip install uv
+$projectPython = py -3.12 -c "import sys; print(sys.executable)"
+py -3.12 -m uv sync --locked --python "$projectPython"
+```
+
+Keep standalone Python ahead of LibreOffice in `PATH`. If adding LibreOffice for PDF export, append its directory: `$env:PATH += ";C:\Program Files\LibreOffice\program"`.
+
 ```sh
 npm run migrate
 ```
