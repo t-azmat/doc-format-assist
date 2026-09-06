@@ -93,6 +93,57 @@ describe.skipIf(!process.env.TEST_DATABASE_URL)(
       }
     });
 
+    it("returns a conflict for duplicate signup without changing the existing account", async () => {
+      const [before] = await database.db
+        .select()
+        .from(database.usersTable)
+        .where(eq(database.usersTable.id, aliceId));
+      const response = await request(app).post("/api/auth/register").send({
+        email: before.email,
+        password: "Different-password-123!",
+        displayName: "Should not replace the account",
+      });
+      expect(response.status).toBe(409);
+      expect(response.body).toEqual({
+        error: "That email is already registered.",
+      });
+      expect(response.headers["set-cookie"]).toBeUndefined();
+      const [after] = await database.db
+        .select()
+        .from(database.usersTable)
+        .where(eq(database.usersTable.id, aliceId));
+      expect(after).toEqual(before);
+    });
+
+    it("creates one usable account when two signups use the same email", async () => {
+      const email = `signup-${crypto.randomUUID()}@example.invalid`;
+      const details = { email, password: "Signup-regression-123!" };
+      try {
+        const responses = await Promise.all([
+          request(app).post("/api/auth/register").send(details),
+          request(app).post("/api/auth/register").send(details),
+        ]);
+        expect(responses.map((response) => response.status).sort()).toEqual([
+          201, 409,
+        ]);
+        const created = responses.find((response) => response.status === 201)!;
+        expect(created.body.email).toBe(email);
+        expect(created.body).not.toHaveProperty("passwordHash");
+        const cookie = created.headers["set-cookie"];
+        expect(cookie).toBeDefined();
+        const me = await request(app).get("/api/auth/me").set("Cookie", cookie);
+        expect(me.status).toBe(200);
+        expect(me.body.id).toBe(created.body.id);
+        const login = await request(app).post("/api/auth/login").send(details);
+        expect(login.status).toBe(200);
+        expect(login.body.id).toBe(created.body.id);
+      } finally {
+        await database.db
+          .delete(database.usersTable)
+          .where(eq(database.usersTable.email, email));
+      }
+    });
+
     async function seed() {
       const [doc] = await database.db
         .insert(database.documentsTable)

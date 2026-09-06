@@ -39,26 +39,22 @@ router.post("/auth/register", authRateLimit, async (req, res, next) => {
     const { email, password, displayName } = parsed.data;
     const passwordHash = await hashPassword(password);
 
-    let user;
-    try {
-      [user] = await db
-        .insert(usersTable)
-        .values({ email, passwordHash, displayName: displayName ?? null })
-        .returning();
-    } catch (err) {
-      // The unique index is the authority on "already registered" — checking
-      // first and inserting after leaves a race between two signups.
-      if ((err as { code?: string }).code === "23505") {
-        res.status(409).json({ error: "That email is already registered." });
-        return;
-      }
-      throw err;
+    // Handle the email conflict atomically in PostgreSQL. Drizzle wraps query
+    // errors, so checking a top-level error code misses duplicate signups.
+    const [user] = await db
+      .insert(usersTable)
+      .values({ email, passwordHash, displayName: displayName ?? null })
+      .onConflictDoNothing({ target: usersTable.email })
+      .returning();
+    if (!user) {
+      res.status(409).json({ error: "That email is already registered." });
+      return;
     }
 
-    const session = await createSession(user!.id, req.get("user-agent"));
+    const session = await createSession(user.id, req.get("user-agent"));
     setSessionCookie(res, session);
-    req.log.info({ userId: user!.id }, "User registered");
-    res.status(201).json(toPublicUser(user!));
+    req.log.info({ userId: user.id }, "User registered");
+    res.status(201).json(toPublicUser(user));
   } catch (err) {
     next(err);
   }
