@@ -23,8 +23,17 @@ test("independent editor restyles typing without rewriting content or losing ric
   await expect(editor.locator("h1")).toHaveCSS("text-transform", "uppercase");
   await expect(json).toHaveText(original!);
   await expect(page.getByRole("status")).toContainText("0 content edits");
-  await editor.locator("p").first().click();
-  await page.keyboard.press("End");
+  // Place the caret at the paragraph boundary independently of font metrics
+  // and line wrapping; Enter and typing still exercise the real editor.
+  await editor.focus();
+  await editor.locator("p").first().evaluate((paragraph) => {
+    const range = document.createRange();
+    range.selectNodeContents(paragraph);
+    range.collapse(false);
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
   await page.keyboard.press("Enter");
   await page.keyboard.type("A new paragraph inherits the venue typography.");
   const added = editor
