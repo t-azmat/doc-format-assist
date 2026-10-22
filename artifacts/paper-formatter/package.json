@@ -71,7 +71,7 @@
     "vite": "^7.3.2",
     "vitest": "^4.1.10",
     "wouter": "^3.3.5",
-    "zod": "^3.25.76"
+    "zod": "^4.5.4"
   },
   "dependencies": {
     "@editorial-desk/editor-react": "^0.1.0",
